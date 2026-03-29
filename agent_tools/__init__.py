@@ -1,13 +1,40 @@
-"""Shared data helpers for the agent + quant pipelines (fetch once, reuse everywhere)."""
+"""Shared tools for the Portfolio Risk Analyst Agent."""
 
-from .data.calculate_returns import calculate_returns
-from .data.fetch_price_data import fetch_price_data
-from .data.valid_tickers import valid_tickers
-from .data.valid_weights import valid_weights
+# Data tools (these should always be available)
+from .data_tools import (
+    fetch_price_data,
+    calculate_returns,
+    valid_tickers,
+    valid_weights
+)
 
+# Workflow tools (these may have optional dependencies)
+try:
+    from .workflow_tools import (
+        classify_intent,
+        Intent,
+        IntentResult
+    )
+    _has_workflow_tools = True
+except ImportError:
+    # Workflow tools require additional dependencies (Google Generative AI)
+    _has_workflow_tools = False
+    classify_intent = None
+    Intent = None
+    IntentResult = None
+
+# Export everything
 __all__ = [
-    "calculate_returns",
     "fetch_price_data",
+    "calculate_returns",
     "valid_tickers",
-    "valid_weights",
+    "valid_weights"
 ]
+
+# Only export workflow tools if they're available
+if _has_workflow_tools:
+    __all__.extend([
+        "classify_intent",
+        "Intent",
+        "IntentResult"
+    ])
