@@ -1,0 +1,26 @@
+# kb3 MACRO REGIME — RECOVERY — generated 2026-03-31T00:35
+
+--- macro-regime ---
+Intent tags: trend_prediction, full_analysis, rebalance
+Current market regime: RECOVERY. Potential recovery: elevated VIX (30.12), positive yield curve (0.46pp). Watch for VIX breaking below 20 as confirmation.
+
+--- macro-rates ---
+Intent tags: trend_prediction, full_analysis, rebalance
+Federal Funds rate is 3.64 percent. 10-year Treasury yield is 4.42 percent. 2-year Treasury yield is 3.96 percent. Yield curve is positive (0.46pp spread), consistent with growth expectations.
+
+--- macro-economy ---
+Intent tags: trend_prediction, full_analysis
+CPI inflation is 2.66 percent YoY, near the Fed's target. Unemployment rate is 4.4 percent. GDP growth last quarter was 0.7 percent annualised (expansion).
+
+--- macro-vix ---
+Intent tags: trend_prediction, full_analysis, rebalance
+VIX at 30.1 — extreme fear, historically coincides with market bottoms. VIX has risen 10.3 points over 30 days.
+
+--- macro-sectors ---
+Intent tags: trend_prediction, rebalance
+30-day sector leaders: Energy (positive 12.02 percent), Utilities (negative 3.31 percent), Financials (negative 5.47 percent). Laggards: Consumer Discretionary (negative 8.74 percent), Healthcare (negative 10.06 percent), Industrials (negative 10.98 percent). Mixed sector leadership — no clear rotation signal.
+
+--- macro-broad-market ---
+Intent tags: trend_prediction, full_analysis
+Broad market 30-day: S&P 500 negative 7.09 percent over 30 days; Nasdaq-100 negative 7.45 percent over 30 days; Russell 2000 negative 7.43 percent over 30 days. Large-cap outperforming small-cap — risk-on breadth.
+
