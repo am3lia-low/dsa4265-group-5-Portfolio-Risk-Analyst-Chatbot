@@ -1,0 +1,24 @@
+{
+  "tickers": [
+    "AAPL",
+    "MSFT",
+    "TSLA",
+    "SPY",
+    "TLT",
+    "GLD"
+  ],
+  "start": "2020-01-01",
+  "end": "today",
+  "source": "yfinance (Yahoo Finance)",
+  "price_field": "Adj Close",
+  "notes": "Adj Close so splits/dividends don't wreck returns",
+  "rows_prices_clean": 1567,
+  "rows_returns": 1566,
+  "ffill_limit": 5,
+  "cleaning": "sort_index \u2192 ffill(limit=5) \u2192 dropna(how='any')",
+  "files": [
+    "adj_close_prices.csv",
+    "simple_returns.csv",
+    "log_returns.csv"
+  ]
+}
