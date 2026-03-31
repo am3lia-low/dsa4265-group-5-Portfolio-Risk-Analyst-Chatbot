@@ -1,0 +1,32 @@
+{
+  "holdings": {
+    "AAPL": {
+      "weight": 0.1,
+      "cost_basis": 150.0
+    },
+    "MSFT": {
+      "weight": 0.25,
+      "cost_basis": 280.0
+    },
+    "NVDA": {
+      "weight": 0.2,
+      "cost_basis": 400.0
+    },
+    "SPY": {
+      "weight": 0.15,
+      "cost_basis": 420.0
+    },
+    "TLT": {
+      "weight": 0.3,
+      "cost_basis": 95.0
+    }
+  },
+  "target_weights": {
+    "AAPL": 0.1,
+    "MSFT": 0.25,
+    "NVDA": 0.2,
+    "SPY": 0.15,
+    "TLT": 0.3
+  },
+  "updated_at": "2026-03-30T14:06:41.529220"
+}

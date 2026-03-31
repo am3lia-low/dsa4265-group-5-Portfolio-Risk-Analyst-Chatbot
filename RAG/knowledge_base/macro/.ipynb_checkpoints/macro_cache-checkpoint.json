@@ -1,0 +1,34 @@
+{
+  "fetched_at": "2026-03-30T14:19:58.181713",
+  "fred": {
+    "FEDFUNDS": 3.64,
+    "CPIAUCSL": 2.6646,
+    "DGS10": 4.42,
+    "DGS2": 3.96,
+    "UNRATE": 4.4,
+    "A191RL1Q225SBEA": 0.7
+  },
+  "vix_current": 31.05,
+  "vix_30d_ago": 18.63,
+  "vix_trend": "rising",
+  "sector_30d_returns": {
+    "XLK": -0.0786,
+    "XLF": -0.0893,
+    "XLE": 0.1364,
+    "XLV": -0.09,
+    "XLI": -0.099,
+    "XLU": -0.0337,
+    "XLY": -0.0971,
+    "XLP": -0.0797,
+    "XLB": -0.0772,
+    "XLRE": -0.083
+  },
+  "broad_market_30d": {
+    "SPY": -0.0776,
+    "QQQ": -0.0766,
+    "IWM": -0.0844
+  },
+  "yield_curve_spread": 0.46,
+  "regime": "recovery",
+  "regime_explanation": "Potential recovery regime: elevated but falling volatility (VIX 31.1), positive yield curve (spread 0.46%). Watch for VIX breaking below 20 as a confirmation signal."
+}
