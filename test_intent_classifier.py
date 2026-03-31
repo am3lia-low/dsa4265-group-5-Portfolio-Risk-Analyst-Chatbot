@@ -28,12 +28,31 @@ load_dotenv()
 # ---------------------------------------------------------------------------
 # Setup
 # ---------------------------------------------------------------------------
-API_KEY = os.environ.get("GEMINI_API_KEY")
-if not API_KEY:
-    print("ERROR: Set GEMINI_API_KEY environment variable")
+# List of available API keys
+API_KEYS = [
+    os.environ.get("GEMINI_API_KEY1"),
+    os.environ.get("GEMINI_API_KEY2"),
+    os.environ.get("GEMINI_API_KEY3")
+]
+
+# Filter out any None values
+API_KEYS = [key for key in API_KEYS if key]
+
+if not API_KEYS:
+    print("ERROR: No valid GEMINI_API_KEY environment variables found")
     sys.exit(1)
 
-CLIENT = genai.Client(api_key=API_KEY)
+CURRENT_KEY_INDEX = 0
+CLIENT = genai.Client(api_key=API_KEYS[CURRENT_KEY_INDEX])
+
+
+def rotate_api_key():
+    """Rotate to the next available API key."""
+    global CURRENT_KEY_INDEX, CLIENT
+    CURRENT_KEY_INDEX = (CURRENT_KEY_INDEX + 1) % len(API_KEYS)
+    CLIENT = genai.Client(api_key=API_KEYS[CURRENT_KEY_INDEX])
+    print(f"Rotated to API key {CURRENT_KEY_INDEX + 1}")
+    return CLIENT
 
 # Shared test fixtures
 NO_PORTFOLIO = None
@@ -54,7 +73,7 @@ SAMPLE_HISTORY = [
 
 # Rate limiting: Gemini Flash-Lite allows 15 RPM
 # We add a small delay between tests to be safe
-DELAY = 0.5  # seconds between API calls
+DELAY = 20  # seconds between API calls
 
 # Counters
 passed = 0
@@ -76,23 +95,46 @@ def test(
     check_entities: dict = None,
 ):
     """Run one test case against the live Gemini API."""
-    global passed, failed, errors
+    global passed, failed, errors, CLIENT
 
     time.sleep(DELAY)
 
-    try:
-        result = classify_intent(
-            message=message,
-            recent_history=history,
-            portfolio_changed=portfolio_changed,
-            is_first_portfolio=is_first_portfolio,
-            client=CLIENT,
-        )
-    except Exception as e:
-        failed += 1
-        errors.append(f"  CRASH  {name}: {e}")
-        print(f"  [CRASH] {name}: CRASHED -- {e}")
-        return
+    # Try up to 3 times with different API keys if we hit rate limits
+    max_retries = min(3, len(API_KEYS))
+    retry_count = 0
+
+    while retry_count < max_retries:
+        try:
+            result = classify_intent(
+                message=message,
+                recent_history=history,
+                portfolio_changed=portfolio_changed,
+                is_first_portfolio=is_first_portfolio,
+                client=CLIENT,
+            )
+            break  # Success, exit the retry loop
+        except Exception as e:
+            # Check if this is a rate limit error (429)
+            error_str = str(e).lower()
+            if "429" in error_str or "rate limit" in error_str:
+                retry_count += 1
+                if retry_count < max_retries:
+                    print(f"  Hit rate limit with API key {CURRENT_KEY_INDEX + 1}. Rotating to next key...")
+                    rotate_api_key()
+                    time.sleep(5)  # Wait a bit before retrying
+                    continue
+                else:
+                    # Exhausted all keys
+                    failed += 1
+                    errors.append(f"  RATE_LIMIT  {name}: All API keys exhausted due to rate limits")
+                    print(f"  [RATE_LIMIT] {name}: All API keys exhausted due to rate limits")
+                    return
+            else:
+                # Some other error occurred
+                failed += 1
+                errors.append(f"  CRASH  {name}: {e}")
+                print(f"  [CRASH] {name}: CRASHED -- {e}")
+                return
 
     # Check primary intent
     primary_ok = result.primary_intent == expected_primary

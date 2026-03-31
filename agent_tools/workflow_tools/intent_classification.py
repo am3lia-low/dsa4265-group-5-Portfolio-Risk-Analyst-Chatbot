@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # 0. Model
 # ---------------------------------------------------------------------------
-CLASSIFIER_MODEL = "gemini-2.5-flash" # boy, i hope this works
+CLASSIFIER_MODEL = "gemini-2.5-flash-lite" # boy, i hope this works
 
 
 
@@ -372,25 +372,48 @@ def classify_intent(
     )
  
     # Step 3: Call Gemini with structured output
-    try:
-        response = client.models.generate_content(
-            model=CLASSIFIER_MODEL,
-            contents=context,
-            config=types.GenerateContentConfig(
-                system_instruction=CLASSIFY_SYSTEM_PROMPT,
-                response_mime_type="application/json",
-                response_json_schema=IntentClassification.model_json_schema(),
-                temperature=0.0,
-            ),
-        )
-    except Exception as e:
-        logger.error("Gemini API call failed: %s", e)
-        return IntentResult(
-            primary_intent=Intent.GENERAL_CHAT,
-            confidence=0.0,
-            reasoning=f"LLM call failed: {e}",
-            requires_portfolio=False,
-        )
+    # Support for retrying with different clients
+    max_retries = 3  # Default max retries
+    retry_count = 0
+
+    while retry_count < max_retries:
+        try:
+            response = client.models.generate_content(
+                model=CLASSIFIER_MODEL,
+                contents=context,
+                config=types.GenerateContentConfig(
+                    system_instruction=CLASSIFY_SYSTEM_PROMPT,
+                    response_mime_type="application/json",
+                    response_json_schema=IntentClassification.model_json_schema(),
+                    temperature=0.0,
+                ),
+            )
+            break  # Success, exit the retry loop
+        except Exception as e:
+            # Check if this is a rate limit error (429)
+            error_str = str(e).lower()
+            if "429" in error_str or "rate limit" in error_str:
+                retry_count += 1
+                # Re-raise the exception if we've exhausted our retries
+                if retry_count >= max_retries:
+                    logger.error("Gemini API call failed after %d retries due to rate limits: %s", max_retries, e)
+                    return IntentResult(
+                        primary_intent=Intent.GENERAL_CHAT,
+                        confidence=0.0,
+                        reasoning=f"LLM call failed after {max_retries} retries due to rate limits: {e}",
+                        requires_portfolio=False,
+                    )
+                # Otherwise, let the caller handle retrying with a different client
+                raise e
+            else:
+                # Some other error occurred
+                logger.error("Gemini API call failed: %s", e)
+                return IntentResult(
+                    primary_intent=Intent.GENERAL_CHAT,
+                    confidence=0.0,
+                    reasoning=f"LLM call failed: {e}",
+                    requires_portfolio=False,
+                )
  
     # Step 4: Parse structured response
     try:
