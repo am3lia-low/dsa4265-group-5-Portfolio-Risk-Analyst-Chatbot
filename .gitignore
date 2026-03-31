@@ -5,3 +5,5 @@ __pycache__/
 RAG/.ipynb_checkpoints/__pycache__/
 RAG/retrieval_log/
 RAG/vector_db/
+.claude/
+.env
