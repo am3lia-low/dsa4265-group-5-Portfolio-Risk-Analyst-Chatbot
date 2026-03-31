@@ -1,6 +1,8 @@
+anaconda_projects/
 .venv/
 __pycache__/
 .ipynb_checkpoints/
-.claude
+RAG/.ipynb_checkpoints/__pycache__/
+RAG/retrieval_log/
+.claude/
 .env
-RAG/vector_db
