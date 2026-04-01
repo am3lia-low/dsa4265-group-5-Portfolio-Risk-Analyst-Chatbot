@@ -1,7 +1,7 @@
 """
 kb2_portfolio.py 
 ===============================
-Portfolio store: holdings management, portfolio-level risk metrics, data cleaning. TXT eport, and chunk generation for Chroma ingestion.
+Portfolio store: holdings management, portfolio-level risk metrics, data cleaning. TXT export, and chunk generation for Chroma ingestion.
 
 Outut
 ------
@@ -189,7 +189,7 @@ class PortfolioStore:
       ...
     }
     Weights should sum to 1.0 (or close to it).
-    cost_basis is the average purchase price per share in USD.
+    cost_basis is the average purchase price per share bought in USD.
     """
 
     def __init__(self, portfolio_path: str = PORTFOLIO_FILE):
@@ -395,10 +395,10 @@ class PortfolioStore:
             f"annualised volatility {m['portfolio_volatility']*100:.2f}% "
             f"({m['risk_label']} risk). "
             f"21-day rolling volatility is {m['vol_21d']*100:.2f}%. "
-            f"Sharpe ratio {m['sharpe']:.2f}, Sortino ratio {m['sortino']:.2f} "
-            f"(risk-free rate {RISK_FREE_RATE*100:.1f}%). "
-            f"Maximum drawdown {m['max_drawdown']*100:.2f}%. "
-            f"Beta vs S&P 500: {m['beta_vs_spy']:.2f}."
+            f"The portfolio has a Sharpe ratio of {m['sharpe']:.2f}, and a Sortino ratio of{m['sortino']:.2f} "
+            f"(risk-free rate is {RISK_FREE_RATE*100:.1f}%). "
+            f"Maximum drawdown is {m['max_drawdown']*100:.2f}%. "
+            f"Beta vs S&P 500 is {m['beta_vs_spy']:.2f}."
         ))
 
         # ── 2. Risk metrics ───────────────────────────────────────────────────
@@ -415,14 +415,14 @@ class PortfolioStore:
             else "near-normal tail behaviour"
         )
         raw_chunks.append(("portfolio-risk", ["full_analysis"],
-            f"95% daily VaR: {m['var_95']*100:.2f}% "
+            f"95% daily VaR is {m['var_95']*100:.2f}% "
             f"(on 95 percent of days, loss will not exceed this level). "
-            f"99% VaR: {m['var_99']*100:.2f}%. "
-            f"Herfindahl-Hirschman Index (HHI): {m['herfindahl']:.4f} — "
+            f"99% VaR is {m['var_99']*100:.2f}%. "
+            f"Herfindahl-Hirschman Index (HHI) is {m['herfindahl']:.4f} — "
             f"{m['concentration_label']} "
-            f"(equal-weight benchmark: {1/len(m['tickers']):.4f}). "
+            f"(equal-weight benchmark is {1/len(m['tickers']):.4f}). "
             f"Return distribution is {skew_interp} (skewness {m['skewness']:.2f}), "
-            f"with {kurt_interp} (excess kurtosis {m['excess_kurtosis']:.2f})."
+            f"with {kurt_interp} (excess kurtosis is {m['excess_kurtosis']:.2f})."
         ))
 
         # ── 3. Correlation + covariance ───────────────────────────────────────
@@ -438,7 +438,7 @@ class PortfolioStore:
  
         high_corr = [p for p in pairs if abs(p[2]) >= 0.70]
         pair_str  = (
-            "; ".join(f"{t1}-{t2} ({c:+.2f})" for t1, t2, c in high_corr)
+            "; ".join(f"{t1} has a correlation with {t2} of ({c:+.2f})" for t1, t2, c in high_corr)
             if high_corr else "none"
         )
         all_pairs_str = "; ".join(
@@ -468,15 +468,15 @@ class PortfolioStore:
         pos_lines = []
         for t, im in sorted(ind.items(), key=lambda x: x[1]["annualised_vol"], reverse=True):
             pos_lines.append(
-                f"{t} (weight {im['weight']*100:.1f}%): "
-                f"vol {im['annualised_vol']*100:.1f}% (21-day: {im['vol_21d']*100:.1f}%), "
-                f"Sharpe {im['sharpe']:.2f}, Sortino {im['sortino']:.2f}, "
-                f"MDD {im['max_drawdown']*100:.1f}%, "
-                f"beta {im['beta_vs_spy']:.2f}, "
-                f"skewness {im['skewness']:.2f}, "
-                f"excess kurtosis {im['excess_kurtosis']:.2f}, "
-                f"risk contribution {im['risk_contribution']*100:.1f}%, "
-                f"risk level {im['risk_label']}"
+                f"{t} (a weight of {im['weight']*100:.1f}%): "
+                f"vol of {im['annualised_vol']*100:.1f}% (21-day has a value of {im['vol_21d']*100:.1f}%), "
+                f"Sharpe has a value of {im['sharpe']:.2f}, Sortino {im['sortino']:.2f}, "
+                f"MDD has a value of  {im['max_drawdown']*100:.1f}%, "
+                f"beta has a value of {im['beta_vs_spy']:.2f}, "
+                f"skewness has a value of {im['skewness']:.2f}, "
+                f"excess kurtosis has a value of {im['excess_kurtosis']:.2f}, "
+                f"risk contribution has a value of {im['risk_contribution']*100:.1f}%, "
+                f"risk level is {im['risk_label']}"
             )
         raw_chunks.append(("portfolio-positions", ["full_analysis", "rebalance"],
             "Per-position metrics (sorted by volatility): "
