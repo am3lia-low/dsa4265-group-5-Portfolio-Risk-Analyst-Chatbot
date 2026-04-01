@@ -1,0 +1,227 @@
+{
+  "query": "Compare microsoft and LULU maximum drawdown.",
+  "intent": "rebalance",
+  "timestamp": "2026-04-01T16:36:29.506833",
+  "resolved_tickers": [
+    "MSFT",
+    "LULU"
+  ],
+  "top_k": 10,
+  "score_threshold": 0.1,
+  "retrieval_metrics": {
+    "Recall@10": 1.0,
+    "MRR": 0.6,
+    "source_coverage": 0.6,
+    "retrieved_sources": [
+      "concepts",
+      "strategies",
+      "tickers"
+    ],
+    "diagnostic_flags": [
+      "LOW_SOURCE_COVERAGE: {'portfolio', 'macro'} missing from results"
+    ],
+    "justification": {
+      "Recall@K": "Recall@10=1.0000. Recall@10 measures whether all queried tickers appear in top-10 results. This value is critical for financial Q&A. Missed ticker = missed facts.",
+      "MRR": "MRR=0.6000. MRR measures the rank position of the first relevant chunk. Low MRR buries relevant context below noise in the LLM prompt.",
+      "source_coverage": "source_coverage=0.6000. Fraction of expected KB sources (['concepts', 'macro', 'portfolio', 'strategies', 'tickers']) that appear in top-10 results. Low coverage means the intent router is over-relying on one KB."
+    }
+  },
+  "chunks_before_filter": 10,
+  "chunks_after_filter": 10,
+  "retrieved_chunks": [
+    {
+      "ticker": "LULU",
+      "section": "historical_last_60_trading_days",
+      "text": "Historical \u2014 last 60 trading days Trend summary: LULU strongly declined 0.276 from 211.44 dollars to 153.1 dollars between Jan 05, 2026 and Mar 31, 2026. The period high was 217.22 dollars and the period low was 143.96 dollars. The maximum drawdown over the period was -0.3245, measured peak to trough. The sharpest two-week sell-off of 0.151 centred around Jan 29. Average daily trading volume over the period was 2777116 shares . Volatility: LULU's annualised realised volatility over the past 60 days is 0.423. The 14-day ATR for LULU is 6.28 dollars, representing 0.040999999999999995 of the current price. LULU recorded 10 trading days with gains exceeding 0.02 and 17 days with losses exceeding 0.02 during this period. The best single day was +0.0499 on Mar 31, and the worst was -0.0649 on Jan 20. Volume: Volume spiked to 2.7\u00d7 the 60-day average on Mar 18 (7402500 shares ), suggesting a significant catalyst on that date.",
+      "kb_source": "tickers",
+      "source_url": "https://finance.yahoo.com/quote/LULU/",
+      "source_type": "yfinance",
+      "citation_id": "ticker-LULU-historical_last_60_trading_days",
+      "rank": 1,
+      "score": 1.0,
+      "bm25_raw": 7.415964474054802,
+      "vec_sim": 0.48270190357663784,
+      "relevant_to": [
+        "MSFT",
+        "LULU"
+      ]
+    },
+    {
+      "ticker": "LULU",
+      "section": "fundamentals",
+      "text": "Fundamentals LULU (lululemon athletica inc.) operates in the Consumer Cyclical sector, Apparel Retail industry, with a market capitalisation of 17.96 billion dollars. LULU has a trailing twelve-month P/E ratio of 11.55 and a forward P/E of 11.54. Earnings per share (EPS) for the trailing twelve months is 13.26 dollars. Revenue for the trailing twelve months is 11.1 billion dollars, with net income of 1.58 billion dollars. LULU's gross margin is 0.5660000000000001, operating margin is 0.2231, and net profit margin is 0.1422. LULU has a debt-to-equity ratio of 36.24 \u2014 conservative leverage, and a current ratio of 2.26 (strong short-term liquidity). The dividend yield is N/A with a payout ratio of 0.0. Price &amp; Momentum: LULU's current price is 153.1 dollars, within a 52-week range of 143.96 dollars to 340.25 dollars. LULU's price returns are -0.1594 over the past 30 days, -0.078 over the past 90 days, and -0.45909999999999995 over the past 12 months. LULU is currently -0.114 below its 50-day SMA of 172.74 dollars, and -0.192 below its 200-day SMA of 189.59 dollars. LULU has an RSI (14-day) of 39.04, which is in neutral territory. Beta relative to the S&P 500 is 1.01 \u2014 moderately more volatile than the broader market. Average daily trading volume is 2775425 shares .",
+      "kb_source": "tickers",
+      "source_url": "https://finance.yahoo.com/quote/LULU/",
+      "source_type": "yfinance",
+      "citation_id": "ticker-LULU-fundamentals",
+      "rank": 2,
+      "score": 0.941023987125422,
+      "bm25_raw": 6.16636782119832,
+      "vec_sim": 0.47689172812569836,
+      "relevant_to": [
+        "MSFT",
+        "LULU"
+      ]
+    },
+    {
+      "ticker": "LULU",
+      "section": "weekly_breakdown",
+      "text": "Weekly breakdown LULU in the week of Jan 05, 2026 opened at 211.44 dollars and closed at 203.9 dollars (-0.036000000000000004), trading in a range of 200.45 dollars to 217.22 dollars. LULU in the week of Jan 12, 2026 opened at 203.3 dollars and closed at 201.87 dollars (-0.006999999999999999), trading in a range of 201.0 dollars to 215.0 dollars. LULU in the week of Jan 19, 2026 opened at 198.41 dollars and closed at 191.07 dollars (-0.037000000000000005), trading in a range of 186.9 dollars to 201.29 dollars. LULU in the week of Jan 26, 2026 opened at 191.01 dollars and closed at 174.5 dollars (-0.086), trading in a range of 171.25 dollars to 195.74 dollars. LULU in the week of Feb 02, 2026 opened at 174.87 dollars and closed at 172.85 dollars (-0.012), trading in a range of 169.43 dollars to 181.56 dollars. LULU in the week of Feb 09, 2026 opened at 173.0 dollars and closed at 176.42 dollars (+0.02), trading in a range of 168.39 dollars to 184.5 dollars. LULU in the week of Feb 16, 2026 opened at 175.21 dollars and closed at 187.3 dollars (+0.069), trading in a range of 172.4 dollars to 192.49 dollars. LULU in the week of Feb 23, 2026 opened at 184.84 dollars and closed at 185.17 dollars (+0.002), trading in a range of 176.68 dollars to 188.42 dollars. LULU in the week of Mar 02, 2026 opened at 179.38 dollars and closed at 170.13 dollars (-0.052000000000000005), trading in a range of 165.88 dollars to 179.38 dollars. LULU in the week of Mar 09, 2026 opened at 165.64 dollars and closed at 157.78 dollars (-0.047), trading in a range of 156.64 dollars to 171.34 dollars. LULU in the week of Mar 16, 2026 opened at 157.5 dollars and closed at 162.82 dollars (+0.034), trading in a range of 156.78 dollars to 169.4 dollars. Volume for the week averaged 1.8\u00d7 the period average. LULU in the week of Mar 23, 2026 opened at 165.88 dollars and closed at 145.85 dollars (-0.121), trading in a range of 143.96 dollars to 167.49 dollars. LULU in the week of Mar 30, 2026 opened at 145.92 dollars and closed at 153.1 dollars (+0.049), trading in a range of 145.37 dollars to 153.67 dollars. Earnings &amp; Analyst Coverage: LULU's next earnings release date is not yet announced. LULU carries a hold \u2014 analysts are broadly neutral among 25 analysts. The mean analyst price target is 183.8 dollars, implying 0.201 upside from the current price.",
+      "kb_source": "tickers",
+      "source_url": "https://finance.yahoo.com/quote/LULU/",
+      "source_type": "yfinance",
+      "citation_id": "ticker-LULU-weekly_breakdown",
+      "rank": 3,
+      "score": 0.940694238727617,
+      "bm25_raw": 6.7859734440223365,
+      "vec_sim": 0.45938011617509766,
+      "relevant_to": [
+        "MSFT",
+        "LULU"
+      ]
+    },
+    {
+      "citation_id": "strategy-calendar_rebalancing",
+      "kb_source": "strategies",
+      "intent_tags": [
+        "rebalance",
+        "full_analysis"
+      ],
+      "source_url": "internal://strategies",
+      "source_type": "curated_static",
+      "updated_at": "2026-04-01T16:36:24.139923",
+      "strategy_key": "calendar_rebalancing",
+      "category": "rebalancing",
+      "label": "Calendar Rebalancing",
+      "text": "Calendar Rebalancing (rebalancing): WHAT: Rebalance back to target allocations at fixed time intervals monthly, quarterly, semi-annually, or annually regardless of how much drift has occurred. WHEN: Applied mechanically at the chosen interval. Annual rebalancing is most common for tax efficiency; quarterly for more active risk management. Monthly is generally over-trading for most portfolios. HOW: At the rebalancing date: (1) Calculate current portfolio weights. (2) Compare to target. (3) Sell overweight positions, buy underweight. (4) If using dividend income or new contributions, direct cash flow to underweight positions first before selling anything. WHY: Simple, predictable, and requires no continuous monitoring. Ensures portfolio risk doesn't drift for more than one period. Particularly suitable for tax-advantaged accounts (no capital gains concern) where simplicity of execution is valued. RISKS: Ignores the magnitude of drift you might rebalance when positions are only 1 percent off target (unnecessary trading costs) and miss rebalancing when they are 15 percent off target mid-period. Less responsive to sudden market events. Trigger conditions: Scheduled quarterly review date reached; Annual tax year end (for tax-loss harvesting alignment); New contributions or withdrawals of >5 percent of portfolio value. Related frameworks: threshold_rebalancing, tax_loss_harvesting.",
+      "rank": 4,
+      "score": 0.7159120108041217,
+      "bm25_raw": 4.3755478462270325,
+      "vec_sim": 0.37161619755294206,
+      "relevant_to": [
+        "MSFT",
+        "LULU"
+      ]
+    },
+    {
+      "ticker": "MSFT",
+      "section": "description",
+      "text": "Description Microsoft Corporation develops and supports software, services, devices, and solutions worldwide.",
+      "kb_source": "tickers",
+      "source_url": "https://finance.yahoo.com/quote/MSFT/",
+      "source_type": "yfinance",
+      "citation_id": "ticker-MSFT-description",
+      "rank": 5,
+      "score": 0.6947150723911051,
+      "bm25_raw": 1.5781005636163246,
+      "vec_sim": 0.43503560571620664,
+      "relevant_to": [
+        "MSFT",
+        "LULU"
+      ]
+    },
+    {
+      "ticker": "LULU",
+      "section": "description",
+      "text": "Description lululemon athletica inc., together with its subsidiaries, designs, distributes, and retails technical athletic apparel, footwear, and accessories for women and men under the lululemon brand in the United States, Canada, Mexico, China Mainland, Hong Kong, Taiwan, Macau, and internationally. It offers pants, shorts, tops, and jackets for athletic activities, such as yoga, running, training, and other activities. The company also provides fitness-inspired accessories.",
+      "kb_source": "tickers",
+      "source_url": "https://finance.yahoo.com/quote/LULU/",
+      "source_type": "yfinance",
+      "citation_id": "ticker-LULU-description",
+      "rank": 6,
+      "score": 0.6908504773616702,
+      "bm25_raw": 1.710464454518342,
+      "vec_sim": 0.42867832027103914,
+      "relevant_to": [
+        "MSFT",
+        "LULU"
+      ]
+    },
+    {
+      "ticker": "MSFT",
+      "section": "fundamentals",
+      "text": "Fundamentals MSFT (Microsoft Corporation) operates in the Technology sector, Software - Infrastructure industry, with a market capitalisation of 2751.24 billion dollars. MSFT has a trailing twelve-month P/E ratio of 23.15 and a forward P/E of 19.64. Earnings per share (EPS) for the trailing twelve months is 15.99 dollars. Revenue for the trailing twelve months is 305.45 billion dollars, with net income of 119.26 billion dollars. MSFT's gross margin is 0.6859000000000001, operating margin is 0.47090000000000004, and net profit margin is 0.39039999999999997. MSFT has a debt-to-equity ratio of 31.54 \u2014 conservative leverage, and a current ratio of 1.39 (adequate short-term liquidity). The dividend yield is 0.0098 with a payout ratio of 0.21280000000000002. Price &amp; Momentum: MSFT's current price is 370.17 dollars, within a 52-week range of 344.79 dollars to 555.45 dollars. MSFT's price returns are -0.07150000000000001 over the past 30 days, -0.2369 over the past 90 days, and -0.0064 over the past 12 months. MSFT is currently -0.08900000000000001 below its 50-day SMA of 406.31 dollars, and -0.223 below its 200-day SMA of 476.29 dollars. MSFT has an RSI (14-day) of 26.09, which is in oversold territory (below 30). Beta relative to the S&P 500 is 1.11 \u2014 moderately more volatile than the broader market. Average daily trading volume is 36406065 shares .",
+      "kb_source": "tickers",
+      "source_url": "https://finance.yahoo.com/quote/MSFT/",
+      "source_type": "yfinance",
+      "citation_id": "ticker-MSFT-fundamentals",
+      "rank": 7,
+      "score": 0.6813644779171613,
+      "bm25_raw": 1.437669768246752,
+      "vec_sim": 0.4297467720866812,
+      "relevant_to": [
+        "MSFT",
+        "LULU"
+      ]
+    },
+    {
+      "citation_id": "concept-max_drawdown",
+      "kb_source": "concepts",
+      "intent_tags": [
+        "concept_explanation",
+        "full_analysis",
+        "rebalance"
+      ],
+      "source_url": "internal://concepts",
+      "source_type": "curated_static",
+      "updated_at": "2026-04-01T16:36:24.135553",
+      "concept_key": "max_drawdown",
+      "label": "Maximum Drawdown (MDD)",
+      "text": "Maximum Drawdown (MDD): Maximum drawdown is the largest peak-to-trough decline in portfolio value over a given period, expressed as a percentage of the peak value. MDD = (Trough Value \u2212 Peak Value) / Peak Value. It measures the worst-case loss an investor would have experienced if they bought at the peak and sold at the trough. A 50 percent drawdown requires a 100 percent subsequent gain just to return to breakeven \u2014 the asymmetry makes MDD one of the most psychologically important risk metrics. Example: Portfolio grows from 100.00 thousand dollars to 150.00 thousand dollars (peak), then falls to 90.00 thousand dollars (trough). MDD is equal to (90.00 thousand dollars \u2212 150.00 thousand dollars) divide by 150.00 thousand dollars which is equal to negative 40 percent. Note that this is a 40 percent loss from peak, not a 10 percent loss from the original 100.00 thousand dollars starting value. Risk relevance: MDD above 20 percent signals historically painful drawdowns. High-concentration tech portfolios have experienced 40-70 percent MDD in bear markets. Diversification and rebalancing are the primary tools to reduce MDD. Related concepts: var, volatility_21d, sharpe_ratio, rebalancing.",
+      "rank": 8,
+      "score": 0.6704971928073503,
+      "bm25_raw": 1.0825383526910923,
+      "vec_sim": 0.43215955155104824,
+      "relevant_to": [
+        "MSFT",
+        "LULU"
+      ]
+    },
+    {
+      "citation_id": "concept-herfindahl_index",
+      "kb_source": "concepts",
+      "intent_tags": [
+        "concept_explanation",
+        "full_analysis",
+        "rebalance"
+      ],
+      "source_url": "internal://concepts",
+      "source_type": "curated_static",
+      "updated_at": "2026-04-01T16:36:24.135553",
+      "concept_key": "herfindahl_index",
+      "label": "Herfindahl-Hirschman Index (HHI)",
+      "text": "Herfindahl-Hirschman Index (HHI): The HHI measures portfolio concentration as the sum of squared weights. It ranges from 1/N (perfectly equal-weight, maximum diversification) to 1.0 (single position, maximum concentration). HHI = \u03a3 w_i\u00b2. For a 5-asset equal-weight portfolio: HHI = 5 \u00d7 (0.2\u00b2) = 0.20. For a single position: HHI = 1.0. A useful normalised version: (HHI \u2212 1/N) / (1 \u2212 1/N) maps the range to [0, 1] regardless of portfolio size. Originally used in antitrust economics to measure market concentration; adapted for portfolio analysis. Example: My portfolio has a share of AAPL of 50 percent, MSFT of 30 percent and NVDA of 20 percent. HHI = 0.5\u00b2 + 0.3\u00b2 + 0.2\u00b2 is equal to 0.25 + 0.09 + 0.04 is equal to 0.38. Equal-weight 3-stock benchmark HHI is then equal to 0.33. The concentrated portfolio has HHI 0.38 vs benchmark 0.33 \u2014 moderately more concentrated than equal-weight. Risk relevance: HHI above 0.25 in a 10-asset portfolio signals meaningful concentration. HHI above 0.5 in any portfolio signals very high single-name risk. Rebalancing is the remedy \u2014 trim the largest weights to bring HHI down. Related concepts: concentration_risk, risk_contribution, pairwise_correlations, rebalancing.",
+      "rank": 9,
+      "score": 0.664432030125012,
+      "bm25_raw": 2.8771324408475794,
+      "vec_sim": 0.37791602258609897,
+      "relevant_to": [
+        "MSFT",
+        "LULU"
+      ]
+    },
+    {
+      "citation_id": "strategy-all_weather",
+      "kb_source": "strategies",
+      "intent_tags": [
+        "rebalance",
+        "full_analysis"
+      ],
+      "source_url": "internal://strategies",
+      "source_type": "curated_static",
+      "updated_at": "2026-04-01T16:36:24.139923",
+      "strategy_key": "all_weather",
+      "category": "asset_allocation",
+      "label": "All-Weather Portfolio (Dalio)",
+      "text": "All-Weather Portfolio (Dalio) (asset_allocation): WHAT: Ray Dalio's All-Weather portfolio is designed to perform in all four economic environments: (1) rising growth, (2) falling growth, (3) rising inflation, (4) falling inflation. Allocation: 30 percent equities, 40 percent long-term bonds, 15 percent intermediate bonds, 7.5 percent gold, 7.5 percent commodities. WHEN: Designed as a permanent strategic allocation not a tactical strategy. Suitable for investors who cannot predict which macro environment comes next and want resilience across all scenarios. Particularly appropriate during periods of macro uncertainty. HOW: Buy and hold with annual rebalancing. Equity component: VTI or SPY. Bond components: TLT (long-term) and IEF (intermediate). Gold: GLD. Commodities: DJP or GSG. Rebalance annually back to target weights. WHY: Backtests show All-Weather delivered approximately 7 to 8 percent annual return with a maximum drawdown of approximately \u221212 percent (2020 COVID crash). It severely underperformed in 2022 (\u221221 percent) when both bonds and equities fell, but historically the diversification across gold and commodities provided partial protection. RISKS: Heavy bond allocation underperforms in rising rate environments. Returns are lower than pure equity in bull markets. The portfolio was designed for an era of lower inflation future performance with structurally higher inflation is uncertain. Trigger conditions: Investor cannot tolerate more than 15 to 20 percent drawdown; Macro environment is uncertain or transitioning between regimes; Investor has a very long time horizon (20+ years). Related frameworks: risk_parity, sixty_forty, threshold_rebalancing.",
+      "rank": 10,
+      "score": 0.6605887666320949,
+      "bm25_raw": 2.749611030237674,
+      "vec_sim": 0.3788230845136489,
+      "relevant_to": [
+        "MSFT",
+        "LULU"
+      ]
+    }
+  ]
+}

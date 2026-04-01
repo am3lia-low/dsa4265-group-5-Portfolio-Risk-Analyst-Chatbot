@@ -1,0 +1,141 @@
+{
+  "query": "How is AAPL so far, and is it risky?",
+  "intent": "full_analysis",
+  "timestamp": "2026-04-01T17:02:05.400210",
+  "resolved_tickers": [
+    "AAPL"
+  ],
+  "top_k": 6,
+  "score_threshold": 0.1,
+  "retrieval_metrics": {
+    "Recall@6": 1.0,
+    "MRR": 1.0,
+    "source_coverage": 0.75,
+    "retrieved_sources": [
+      "concepts",
+      "portfolio",
+      "tickers"
+    ],
+    "diagnostic_flags": [],
+    "justification": {
+      "Recall@K": "Recall@6=1.0000. Recall@6 measures whether all queried tickers appear in top-6 results. This value is critical for financial Q&A. Missed ticker = missed facts.",
+      "MRR": "MRR=1.0000. MRR measures the rank position of the first relevant chunk. Low MRR buries relevant context below noise in the LLM prompt.",
+      "source_coverage": "source_coverage=0.7500. Fraction of expected KB sources (['concepts', 'macro', 'portfolio', 'tickers']) that appear in top-6 results. Low coverage means the intent router is over-relying on one KB."
+    }
+  },
+  "chunks_before_filter": 6,
+  "chunks_after_filter": 6,
+  "retrieved_chunks": [
+    {
+      "ticker": "AAPL",
+      "section": "fundamentals",
+      "text": "Fundamentals AAPL (Apple Inc.) operates in the Technology sector, Consumer Electronics industry, with a market capitalisation of 3730.19 billion dollars. AAPL has a trailing twelve-month P/E ratio of 32.17 and a forward P/E of 27.24. Earnings per share (EPS) for the trailing twelve months is 7.89 dollars. Revenue for the trailing twelve months is 435.62 billion dollars, with net income of 117.78 billion dollars. AAPL's gross margin is 0.4733, operating margin is 0.35369999999999996, and net profit margin is 0.2704. AAPL has a debt-to-equity ratio of 102.63 \u2014 elevated but common for large-caps with buyback programmes, and a current ratio of 0.97 (current liabilities exceed current assets \u2014 watch liquidity). The dividend yield is 0.0040999999999999995 with a payout ratio of 0.1304. Price &amp; Momentum: AAPL's current price is 253.79 dollars, within a 52-week range of 169.21 dollars to 288.62 dollars. AAPL's price returns are -0.039900000000000005 over the past 30 days, -0.0541 over the past 90 days, and +0.1475 over the past 12 months. AAPL is currently -0.024 below its 50-day SMA of 259.95 dollars, and +0.022000000000000002 above its 200-day SMA of 248.21 dollars. AAPL has an RSI (14-day) of 41.08, which is in neutral territory. Beta relative to the S&P 500 is 1.12 \u2014 moderately more volatile than the broader market. Average daily trading volume is 47989598 shares .",
+      "kb_source": "tickers",
+      "source_url": "https://finance.yahoo.com/quote/AAPL/",
+      "source_type": "yfinance",
+      "citation_id": "ticker-AAPL-fundamentals",
+      "rank": 1,
+      "score": 1.0,
+      "bm25_raw": 6.53775713393391,
+      "vec_sim": 0.5825579796064623,
+      "relevant_to": [
+        "AAPL"
+      ]
+    },
+    {
+      "ticker": "AAPL",
+      "section": "historical_last_60_trading_days",
+      "text": "Historical \u2014 last 60 trading days Trend summary: AAPL moderately declined 0.061 from 270.39 dollars to 253.79 dollars between Jan 05, 2026 and Mar 31, 2026. The period high was 280.65 dollars and the period low was 243.19 dollars. The maximum drawdown over the period was -0.1124, measured peak to trough. The sharpest two-week rally of 0.121 centred around Feb 06. Average daily trading volume over the period was 48184790 shares . Volatility: AAPL's annualised realised volatility over the past 60 days is 0.253. The 14-day ATR for AAPL is 5.52 dollars, representing 0.0217 of the current price. AAPL recorded 6 trading days with gains exceeding 0.02 and 5 days with losses exceeding 0.02 during this period. The best single day was +0.0406 on Feb 02, and the worst was -0.05 on Feb 12. Volume: A volume increase of 1.9\u00d7 the 60-day average occurred on Jan 30, indicating elevated but not exceptional interest.",
+      "kb_source": "tickers",
+      "source_url": "https://finance.yahoo.com/quote/AAPL/",
+      "source_type": "yfinance",
+      "citation_id": "ticker-AAPL-historical_last_60_trading_days",
+      "rank": 2,
+      "score": 0.9009068618061173,
+      "bm25_raw": 5.36259894695016,
+      "vec_sim": 0.5449677551632407,
+      "relevant_to": [
+        "AAPL"
+      ]
+    },
+    {
+      "ticker": "AAPL",
+      "section": "weekly_breakdown",
+      "text": "Weekly breakdown AAPL in the week of Jan 05, 2026 opened at 270.39 dollars and closed at 259.13 dollars (-0.042), trading in a range of 255.46 dollars to 271.26 dollars. AAPL in the week of Jan 12, 2026 opened at 258.92 dollars and closed at 255.29 dollars (-0.013999999999999999), trading in a range of 254.69 dollars to 261.58 dollars. AAPL in the week of Jan 19, 2026 opened at 252.49 dollars and closed at 247.81 dollars (-0.019), trading in a range of 243.19 dollars to 254.55 dollars. AAPL in the week of Jan 26, 2026 opened at 251.24 dollars and closed at 259.24 dollars (+0.032), trading in a range of 249.57 dollars to 261.71 dollars. AAPL in the week of Feb 02, 2026 opened at 259.79 dollars and closed at 277.86 dollars (+0.07), trading in a range of 258.97 dollars to 280.65 dollars. AAPL in the week of Feb 09, 2026 opened at 277.91 dollars and closed at 255.78 dollars (-0.08), trading in a range of 255.45 dollars to 280.18 dollars. AAPL in the week of Feb 16, 2026 opened at 258.05 dollars and closed at 264.58 dollars (+0.025), trading in a range of 255.54 dollars to 266.82 dollars. AAPL in the week of Feb 23, 2026 opened at 263.49 dollars and closed at 264.18 dollars (+0.003), trading in a range of 262.89 dollars to 276.11 dollars. AAPL in the week of Mar 02, 2026 opened at 262.41 dollars and closed at 257.46 dollars (-0.019), trading in a range of 254.37 dollars to 266.53 dollars. AAPL in the week of Mar 09, 2026 opened at 255.69 dollars and closed at 250.12 dollars (-0.022000000000000002), trading in a range of 249.52 dollars to 262.48 dollars. AAPL in the week of Mar 16, 2026 opened at 252.11 dollars and closed at 247.99 dollars (-0.016), trading in a range of 246.0 dollars to 255.13 dollars. AAPL in the week of Mar 23, 2026 opened at 253.97 dollars and closed at 248.8 dollars (-0.02), trading in a range of 248.07 dollars to 257.0 dollars. AAPL in the week of Mar 30, 2026 opened at 250.07 dollars and closed at 253.79 dollars (+0.015), trading in a range of 245.51 dollars to 255.48 dollars. Earnings &amp; Analyst Coverage: AAPL's next earnings release date is not yet announced. AAPL carries a buy \u2014 analysts lean bullish overall among 41 analysts. The mean analyst price target is 295.31 dollars, implying 0.16399999999999998 upside from the current price.",
+      "kb_source": "tickers",
+      "source_url": "https://finance.yahoo.com/quote/AAPL/",
+      "source_type": "yfinance",
+      "citation_id": "ticker-AAPL-weekly_breakdown",
+      "rank": 3,
+      "score": 0.8251206183838115,
+      "bm25_raw": 5.170694492235497,
+      "vec_sim": 0.48922505672511474,
+      "relevant_to": [
+        "AAPL"
+      ]
+    },
+    {
+      "citation_id": "concept-pairwise_correlations",
+      "kb_source": "concepts",
+      "intent_tags": [
+        "concept_explanation",
+        "full_analysis",
+        "rebalance"
+      ],
+      "source_url": "internal://concepts",
+      "source_type": "curated_static",
+      "updated_at": "2026-04-01T17:01:58.375367",
+      "concept_key": "pairwise_correlations",
+      "label": "Pairwise Correlations",
+      "text": "Pairwise Correlations: Pairwise correlations are the correlation coefficients between every pair of assets in the portfolio, ranging from \u22121 (perfectly opposite) to +1 (perfectly in sync). Correlation of 0 means the assets are independent \u2014 holding both gives maximum diversification benefit. Correlation above 0.70 means the assets behave almost identically \u2014 holding both offers limited risk reduction. The correlation matrix is the normalised version of the covariance matrix: correlation_ij = \u03a3_ij / (vol_i \u00d7 vol_j). Critically, correlations are not stable \u2014 they tend to spike toward 1.0 during market crises. Example: AAPL and MSFT have a correlation of 0.85, showing near-identical behaviour. Holding 50 percent each is almost the same as holding 100 percent in either \u2014 concentration risk remains. AAPL and TLT correlation \u22120.15: slightly negative \u2014 TLT provides mild diversification benefit against equity drawdowns. Risk relevance: Review pairwise correlations to identify clusters of highly correlated assets. A portfolio with all pairs above 0.6 has essentially one concentrated bet regardless of how many tickers it holds. The correlation breakdown in crises is why static allocation is insufficient \u2014 dynamic monitoring is needed. Related concepts: covariance_matrix, portfolio_volatility, concentration_risk, diversification.",
+      "rank": 4,
+      "score": 0.7750822090056531,
+      "bm25_raw": 6.032014411825636,
+      "vec_sim": 0.41468921671636017,
+      "relevant_to": [
+        "AAPL"
+      ]
+    },
+    {
+      "citation_id": "portfolio-overview",
+      "kb_source": "portfolio",
+      "intent_tags": [
+        "full_analysis",
+        "rebalance"
+      ],
+      "source_url": "internal://portfolio",
+      "source_type": "portfolio_store",
+      "updated_at": "2026-04-01 17:01",
+      "text": "The portfolio holds 5 positions: AAPL, MSFT, NVDA, SPY, TLT. Annualised return is 18.04 percent, annualised volatility 18.24 percent (high risk). 21-day rolling volatility is 17.7 percent. The portfolio has a Sharpe ratio of 0.72, and a Sortino ratio of1.07 (risk-free rate is 5 percent). Maximum drawdown is -15.69 percent. Beta vs S&P 500 is 0.87.",
+      "rank": 5,
+      "score": 0.7065749969726534,
+      "bm25_raw": 4.214210622759392,
+      "vec_sim": 0.42709511296147357,
+      "relevant_to": [
+        "AAPL"
+      ]
+    },
+    {
+      "citation_id": "concept-diversification",
+      "kb_source": "concepts",
+      "intent_tags": [
+        "concept_explanation",
+        "full_analysis",
+        "rebalance"
+      ],
+      "source_url": "internal://concepts",
+      "source_type": "curated_static",
+      "updated_at": "2026-04-01T17:01:58.375367",
+      "concept_key": "diversification",
+      "label": "Diversification",
+      "text": "Diversification: Diversification is the practice of spreading investments across assets with low correlations to reduce portfolio volatility without proportionally reducing expected return. True diversification requires low or negative pairwise correlations \u2014 it is not just about holding many tickers. A 20-stock portfolio of US technology stocks is not well-diversified. Effective diversification spans: asset class (equities, bonds, commodities), geography, sector, and factor (growth vs value, cyclical vs defensive). Example: 2022: SPY \u221218 percent, short-term bonds (SHY) \u22123.5 percent, commodities (DJP) +20 percent. A 60 percent equity / 30 percent bond / 10 percent commodity portfolio would have lost approximately \u22128 percent \u2014 far less than pure equity. Risk relevance: Diversification is the only free lunch in finance (Markowitz). It reduces volatility without proportionally reducing return. It is the primary defence against concentration risk and single-event losses. Related concepts: correlation, pairwise_correlations, concentration_risk, rebalancing, asset_allocation.",
+      "rank": 6,
+      "score": 0.694276034156374,
+      "bm25_raw": 4.862513157345843,
+      "vec_sim": 0.3921018426142117,
+      "relevant_to": [
+        "AAPL"
+      ]
+    }
+  ]
+}

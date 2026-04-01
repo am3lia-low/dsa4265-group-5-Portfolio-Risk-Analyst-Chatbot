@@ -1,0 +1,148 @@
+{
+  "query": "Should I rebalance given current market conditions?",
+  "intent": "rebalance",
+  "timestamp": "2026-04-01T16:55:01.635759",
+  "resolved_tickers": [],
+  "top_k": 6,
+  "score_threshold": 0.1,
+  "retrieval_metrics": {
+    "Recall@6": 1.0,
+    "MRR": 1.0,
+    "source_coverage": 0.6,
+    "retrieved_sources": [
+      "concepts",
+      "macro",
+      "strategies"
+    ],
+    "diagnostic_flags": [
+      "LOW_SOURCE_COVERAGE: {'tickers', 'portfolio'} missing from results"
+    ],
+    "justification": {
+      "Recall@K": "Recall@6=1.0000. Recall@6 measures whether all queried tickers appear in top-6 results. This value is critical for financial Q&A. Missed ticker = missed facts.",
+      "MRR": "MRR=1.0000. MRR measures the rank position of the first relevant chunk. Low MRR buries relevant context below noise in the LLM prompt.",
+      "source_coverage": "source_coverage=0.6000. Fraction of expected KB sources (['concepts', 'macro', 'portfolio', 'strategies', 'tickers']) that appear in top-6 results. Low coverage means the intent router is over-relying on one KB."
+    }
+  },
+  "chunks_before_filter": 6,
+  "chunks_after_filter": 6,
+  "retrieved_chunks": [
+    {
+      "citation_id": "strategy-calendar_rebalancing",
+      "kb_source": "strategies",
+      "intent_tags": [
+        "rebalance",
+        "full_analysis"
+      ],
+      "source_url": "internal://strategies",
+      "source_type": "curated_static",
+      "updated_at": "2026-04-01T16:54:56.722636",
+      "strategy_key": "calendar_rebalancing",
+      "category": "rebalancing",
+      "label": "Calendar Rebalancing",
+      "text": "Calendar Rebalancing (rebalancing): WHAT: Rebalance back to target allocations at fixed time intervals monthly, quarterly, semi-annually, or annually regardless of how much drift has occurred. WHEN: Applied mechanically at the chosen interval. Annual rebalancing is most common for tax efficiency; quarterly for more active risk management. Monthly is generally over-trading for most portfolios. HOW: At the rebalancing date: (1) Calculate current portfolio weights. (2) Compare to target. (3) Sell overweight positions, buy underweight. (4) If using dividend income or new contributions, direct cash flow to underweight positions first before selling anything. WHY: Simple, predictable, and requires no continuous monitoring. Ensures portfolio risk doesn't drift for more than one period. Particularly suitable for tax-advantaged accounts (no capital gains concern) where simplicity of execution is valued. RISKS: Ignores the magnitude of drift you might rebalance when positions are only 1 percent off target (unnecessary trading costs) and miss rebalancing when they are 15 percent off target mid-period. Less responsive to sudden market events. Trigger conditions: Scheduled quarterly review date reached; Annual tax year end (for tax-loss harvesting alignment); New contributions or withdrawals of >5 percent of portfolio value. Related frameworks: threshold_rebalancing, tax_loss_harvesting.",
+      "rank": 1,
+      "score": 0.9818217440531145,
+      "bm25_raw": 4.632598301815101,
+      "vec_sim": 0.5125590472518549,
+      "relevant_to": []
+    },
+    {
+      "citation_id": "strategy-when_to_rebalance",
+      "kb_source": "strategies",
+      "intent_tags": [
+        "rebalance",
+        "full_analysis"
+      ],
+      "source_url": "internal://strategies",
+      "source_type": "curated_static",
+      "updated_at": "2026-04-01T16:54:56.722636",
+      "strategy_key": "when_to_rebalance",
+      "category": "rebalancing",
+      "label": "When Rebalancing Is Beneficial \u2014 Decision Framework",
+      "text": "When Rebalancing Is Beneficial Decision Framework (rebalancing): WHAT: A decision framework that identifies when the expected benefit of rebalancing (risk reduction, mean reversion capture) exceeds its costs (transaction costs, taxes, bid-ask spreads). WHEN: Rebalancing is most beneficial when: (1) drift is large (>plus or minus 5 percentage points), (2) the market is volatile (reversion more likely), (3) it can be done tax-efficiently, and (4) assets have low momentum (trending assets benefit from letting drift run). It is LEAST beneficial when: drift is small (<plus or minus 3 percentage points), assets are strongly trending, or transaction costs are high relative to portfolio size. HOW: Decision tree: STEP 1: Is drift >plus or minus 5 percentage points on any position? If No \u2192 do not rebalance. If Yes \u2192 STEP 2: Is the drifting asset in a strong momentum regime (>+20 percent in 90 days)? If Yes \u2192 widen the band toplus or minus 7 percentage points and delay. If No \u2192 STEP 3: Can the rebalance be done in a tax-advantaged account? If Yes \u2192 rebalance immediately. If No \u2192 STEP 4: Do transaction costs + tax cost exceed expected drift correction benefit? If cost > benefit \u2192 delay or use new contributions instead of selling. WHY: Rebalancing too frequently increases costs without proportional risk reduction. Rebalancing too infrequently allows concentration risk to compound. Theplus or minus 5 percentage points threshold is empirically validated by Vanguard and T. Rowe Price research as the approximate crossover point where benefit exceeds cost for typical retail portfolio sizes. RISKS: Mechanical rebalancing in strongly trending markets (2017 US equities, 2020-2021 tech) consistently sells winners prematurely. Incorporate a momentum filter if an asset has risen >20 percent in 90 days, widen the rebalancing band. Trigger conditions: Drift exceedsplus or minus 5 percentage points AND asset is not in strong momentum regime; Portfolio beta has deviated >0.3 from target; Macro regime has changed (e.g. risk_on \u2192 risk_off) requiring allocation shift; New contributions or distributions are being made (use cash flows first). Related frameworks: threshold_rebalancing, calendar_rebalancing, tax_loss_harvesting, asset_allocation.",
+      "rank": 2,
+      "score": 0.8953304028958597,
+      "bm25_raw": 3.0162909758273977,
+      "vec_sim": 0.526224539193265,
+      "relevant_to": []
+    },
+    {
+      "citation_id": "concept-rebalancing",
+      "kb_source": "concepts",
+      "intent_tags": [
+        "concept_explanation",
+        "full_analysis",
+        "rebalance"
+      ],
+      "source_url": "internal://concepts",
+      "source_type": "curated_static",
+      "updated_at": "2026-04-01T16:54:56.716950",
+      "concept_key": "rebalancing",
+      "label": "Portfolio Rebalancing",
+      "text": "Portfolio Rebalancing: Rebalancing is the process of realigning portfolio weights back to target allocations after market movements have caused drift. Two main approaches: (1) Calendar rebalancing \u2014 at fixed intervals (monthly, quarterly). (2) Threshold rebalancing \u2014 when any position drifts beyond a set band (e.g. \u00b15pp). Research shows threshold rebalancing outperforms calendar on a risk-adjusted basis. Rebalancing sells winners and buys laggards \u2014 disciplined buy-low-sell-high that many investors struggle with emotionally. Example: Target: 60 percent equity / 40 percent bond. After rally, drifts to 72 percent/28 percent. Threshold rule triggers: sell 12pp equity, buy 12pp bond. On a 500.00 thousand dollars portfolio: sell 60.00 thousand dollars equity, buy 60.00 thousand dollars bond. Risk relevance: Unmanaged drift can materially increase risk. A 60/40 drifting to 80/20 has substantially higher equity risk than intended. Rebalancing also prevents emotional bias \u2014 investors naturally want to hold more of what has risen. Related concepts: concentration_risk, diversification, asset_allocation, beta.",
+      "rank": 3,
+      "score": 0.7435589053057948,
+      "bm25_raw": 0.7537196263717196,
+      "vec_sim": 0.522277232654281,
+      "relevant_to": []
+    },
+    {
+      "citation_id": "strategy-threshold_rebalancing",
+      "kb_source": "strategies",
+      "intent_tags": [
+        "rebalance",
+        "full_analysis"
+      ],
+      "source_url": "internal://strategies",
+      "source_type": "curated_static",
+      "updated_at": "2026-04-01T16:54:56.722636",
+      "strategy_key": "threshold_rebalancing",
+      "category": "rebalancing",
+      "label": "Threshold Rebalancing (Bands Strategy)",
+      "text": "Threshold Rebalancing (Bands Strategy) (rebalancing): WHAT: Rebalance only when a position drifts beyond a defined percentage-point band from its target weight. Common bands: plus or minus 5 percentage points for major asset classes, plus or minus 3 percentage points for smaller positions. WHEN: Triggered by price action, not by the calendar. Monitor drift continuously or at fixed review intervals (weekly). Rebalance if any position is outside its band. HOW: Step 1: Define target weights and bands for each position. Step 2: Calculate current weight of each position. Step 3: Identify positions outside bands. Step 4: Sell the most overweight positions and use proceeds to buy the most underweight positions. Step 5: Execute in a tax-efficient order (use tax-advantaged accounts first, then taxable). WHY: Research by Vanguard and Dimensional Fund Advisors shows threshold rebalancing outperforms calendar rebalancing on a risk-adjusted basis by 0.1 to 0.4 percent annually. It trades less (lower costs), but trades more meaningfully (larger drift corrections). It also naturally exploits mean reversion selling assets that have risen and buying those that have fallen. RISKS: Can underperform in strongly trending markets where momentum persists. A trend-following asset that keeps rising will be repeatedly trimmed, missing gains. Mitigate by setting wider bands (\u00b17plus or minus 10 percentage points) for higher-conviction positions. Trigger conditions: Any position drifts more than 5 percentage points from target weight; Portfolio beta deviates more than 0.2 from target beta; Correlation between any two holdings rises above 0.85 (diversification breakdown); Sector weight exceeds 40 percent of total portfolio. Related frameworks: calendar_rebalancing, tax_loss_harvesting, risk_parity.",
+      "rank": 4,
+      "score": 0.7395895557729987,
+      "bm25_raw": 1.4856995501442471,
+      "vec_sim": 0.48365892708955005,
+      "relevant_to": []
+    },
+    {
+      "citation_id": "concept-max_drawdown",
+      "kb_source": "concepts",
+      "intent_tags": [
+        "concept_explanation",
+        "full_analysis",
+        "rebalance"
+      ],
+      "source_url": "internal://concepts",
+      "source_type": "curated_static",
+      "updated_at": "2026-04-01T16:54:56.716950",
+      "concept_key": "max_drawdown",
+      "label": "Maximum Drawdown (MDD)",
+      "text": "Maximum Drawdown (MDD): Maximum drawdown is the largest peak-to-trough decline in portfolio value over a given period, expressed as a percentage of the peak value. MDD = (Trough Value \u2212 Peak Value) / Peak Value. It measures the worst-case loss an investor would have experienced if they bought at the peak and sold at the trough. A 50 percent drawdown requires a 100 percent subsequent gain just to return to breakeven \u2014 the asymmetry makes MDD one of the most psychologically important risk metrics. Example: Portfolio grows from 100.00 thousand dollars to 150.00 thousand dollars (peak), then falls to 90.00 thousand dollars (trough). MDD is equal to (90.00 thousand dollars \u2212 150.00 thousand dollars) divide by 150.00 thousand dollars which is equal to negative 40 percent. Note that this is a 40 percent loss from peak, not a 10 percent loss from the original 100.00 thousand dollars starting value. Risk relevance: MDD above 20 percent signals historically painful drawdowns. High-concentration tech portfolios have experienced 40-70 percent MDD in bear markets. Diversification and rebalancing are the primary tools to reduce MDD. Related concepts: var, volatility_21d, sharpe_ratio, rebalancing.",
+      "rank": 5,
+      "score": 0.7223108597388107,
+      "bm25_raw": 2.583114233299277,
+      "vec_sim": 0.41724518266707683,
+      "relevant_to": []
+    },
+    {
+      "citation_id": "macro-regime",
+      "kb_source": "macro",
+      "intent_tags": [
+        "trend_prediction",
+        "full_analysis",
+        "rebalance"
+      ],
+      "source_url": "https://finance.yahoo.com",
+      "source_type": "fred+yfinance",
+      "updated_at": "2026-04-01T16:31",
+      "text": "Current market regime: RISK_ON. Risk-on: VIX at 24.9, positive yield curve (0.53pp spread), inflation within range. Conditions favour growth equities and risk assets.",
+      "rank": 6,
+      "score": 0.6470925935519454,
+      "bm25_raw": 1.1862643655876508,
+      "vec_sim": 0.42870154242667347,
+      "relevant_to": []
+    }
+  ]
+}

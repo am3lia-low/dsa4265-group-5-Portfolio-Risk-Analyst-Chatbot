@@ -1,0 +1,189 @@
+{
+  "computed_at": "2026-04-01T17:01:58.370463",
+  "tickers": [
+    "AAPL",
+    "MSFT",
+    "NVDA",
+    "SPY",
+    "TLT"
+  ],
+  "portfolio_return": 0.1804,
+  "portfolio_volatility": 0.1824,
+  "vol_21d": 0.177,
+  "sharpe": 0.7152,
+  "sortino": 1.068,
+  "max_drawdown": -0.1569,
+  "var_95": 0.0163,
+  "var_99": 0.0324,
+  "skewness": 1.8222,
+  "excess_kurtosis": 18.894,
+  "beta_vs_spy": 0.8669,
+  "herfindahl": 0.225,
+  "concentration_label": "well diversified",
+  "risk_label": "high",
+  "covariance_matrix": {
+    "AAPL": {
+      "AAPL": 0.100295,
+      "MSFT": 0.033246,
+      "NVDA": 0.070072,
+      "SPY": 0.046268,
+      "TLT": 0.003592
+    },
+    "MSFT": {
+      "AAPL": 0.033246,
+      "MSFT": 0.070192,
+      "NVDA": 0.0623,
+      "SPY": 0.031859,
+      "TLT": 0.001448
+    },
+    "NVDA": {
+      "AAPL": 0.070072,
+      "MSFT": 0.0623,
+      "NVDA": 0.172229,
+      "SPY": 0.062023,
+      "TLT": 0.000582
+    },
+    "SPY": {
+      "AAPL": 0.046268,
+      "MSFT": 0.031859,
+      "NVDA": 0.062023,
+      "SPY": 0.036418,
+      "TLT": 0.003286
+    },
+    "TLT": {
+      "AAPL": 0.003592,
+      "MSFT": 0.001448,
+      "NVDA": 0.000582,
+      "SPY": 0.003286,
+      "TLT": 0.01304
+    }
+  },
+  "correlation_matrix": {
+    "AAPL": {
+      "AAPL": 1.0,
+      "MSFT": 0.3962,
+      "NVDA": 0.5332,
+      "SPY": 0.7656,
+      "TLT": 0.0993
+    },
+    "MSFT": {
+      "AAPL": 0.3962,
+      "MSFT": 1.0,
+      "NVDA": 0.5666,
+      "SPY": 0.6301,
+      "TLT": 0.0479
+    },
+    "NVDA": {
+      "AAPL": 0.5332,
+      "MSFT": 0.5666,
+      "NVDA": 1.0,
+      "SPY": 0.7831,
+      "TLT": 0.0123
+    },
+    "SPY": {
+      "AAPL": 0.7656,
+      "MSFT": 0.6301,
+      "NVDA": 0.7831,
+      "SPY": 1.0,
+      "TLT": 0.1508
+    },
+    "TLT": {
+      "AAPL": 0.0993,
+      "MSFT": 0.0479,
+      "NVDA": 0.0123,
+      "SPY": 0.1508,
+      "TLT": 1.0
+    }
+  },
+  "risk_contributions": {
+    "AAPL": 0.1214,
+    "MSFT": 0.2897,
+    "NVDA": 0.3999,
+    "SPY": 0.1418,
+    "TLT": 0.0473
+  },
+  "individual_metrics": {
+    "AAPL": {
+      "weight": 0.1,
+      "annualised_return": 0.206,
+      "annualised_vol": 0.3167,
+      "vol_21d": 0.1934,
+      "sharpe": 0.4927,
+      "sortino": 0.6847,
+      "max_drawdown": -0.2299,
+      "var_95": 0.0309,
+      "skewness": 1.2879,
+      "excess_kurtosis": 15.7493,
+      "beta_vs_spy": 1.2755,
+      "risk_contribution": 0.1214,
+      "risk_label": "very high"
+    },
+    "MSFT": {
+      "weight": 0.25,
+      "annualised_return": 0.0289,
+      "annualised_vol": 0.2649,
+      "vol_21d": 0.2243,
+      "sharpe": -0.0795,
+      "sortino": -0.1059,
+      "max_drawdown": -0.3391,
+      "var_95": 0.0245,
+      "skewness": 0.2563,
+      "excess_kurtosis": 11.1694,
+      "beta_vs_spy": 0.8783,
+      "risk_contribution": 0.2897,
+      "risk_label": "high"
+    },
+    "NVDA": {
+      "weight": 0.2,
+      "annualised_return": 0.7539,
+      "annualised_vol": 0.415,
+      "vol_21d": 0.3635,
+      "sharpe": 1.6961,
+      "sortino": 2.7086,
+      "max_drawdown": -0.2021,
+      "var_95": 0.0373,
+      "skewness": 1.1691,
+      "excess_kurtosis": 9.8323,
+      "beta_vs_spy": 1.7099,
+      "risk_contribution": 0.3999,
+      "risk_label": "very high"
+    },
+    "SPY": {
+      "weight": 0.15,
+      "annualised_return": 0.1979,
+      "annualised_vol": 0.1908,
+      "vol_21d": 0.1841,
+      "sharpe": 0.7752,
+      "sortino": 0.9999,
+      "max_drawdown": -0.1205,
+      "var_95": 0.0156,
+      "skewness": 1.6749,
+      "excess_kurtosis": 25.7287,
+      "beta_vs_spy": 1.004,
+      "risk_contribution": 0.1418,
+      "risk_label": "high"
+    },
+    "TLT": {
+      "weight": 0.3,
+      "annualised_return": 0.0016,
+      "annualised_vol": 0.1142,
+      "vol_21d": 0.1284,
+      "sharpe": -0.4237,
+      "sortino": -0.6035,
+      "max_drawdown": -0.0923,
+      "var_95": 0.0109,
+      "skewness": -0.5298,
+      "excess_kurtosis": 1.4292,
+      "beta_vs_spy": 0.0906,
+      "risk_contribution": 0.0473,
+      "risk_label": "moderate"
+    }
+  },
+  "drift_from_target": {
+    "AAPL": 0.0,
+    "MSFT": 0.0,
+    "NVDA": 0.0,
+    "SPY": 0.0,
+    "TLT": 0.0
+  }
+}

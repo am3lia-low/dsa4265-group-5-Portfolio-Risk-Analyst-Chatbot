@@ -1,0 +1,148 @@
+{
+  "query": "What does high risk mean for my portfolio?",
+  "intent": "full_analysis",
+  "timestamp": "2026-04-01T16:54:56.709876",
+  "resolved_tickers": [],
+  "top_k": 6,
+  "score_threshold": 0.1,
+  "retrieval_metrics": {
+    "Recall@6": 1.0,
+    "MRR": 1.0,
+    "source_coverage": 0.25,
+    "retrieved_sources": [
+      "concepts"
+    ],
+    "diagnostic_flags": [
+      "LOW_SOURCE_COVERAGE: {'tickers', 'portfolio', 'macro'} missing from results"
+    ],
+    "justification": {
+      "Recall@K": "Recall@6=1.0000. Recall@6 measures whether all queried tickers appear in top-6 results. This value is critical for financial Q&A. Missed ticker = missed facts.",
+      "MRR": "MRR=1.0000. MRR measures the rank position of the first relevant chunk. Low MRR buries relevant context below noise in the LLM prompt.",
+      "source_coverage": "source_coverage=0.2500. Fraction of expected KB sources (['concepts', 'macro', 'portfolio', 'tickers']) that appear in top-6 results. Low coverage means the intent router is over-relying on one KB."
+    }
+  },
+  "chunks_before_filter": 6,
+  "chunks_after_filter": 6,
+  "retrieved_chunks": [
+    {
+      "citation_id": "concept-high_risk_definition",
+      "kb_source": "concepts",
+      "intent_tags": [
+        "concept_explanation",
+        "full_analysis",
+        "rebalance"
+      ],
+      "source_url": "internal://concepts",
+      "source_type": "curated_static",
+      "updated_at": "2026-04-01T16:54:51.773160",
+      "concept_key": "high_risk_definition",
+      "label": "What 'High Risk' Means in a Portfolio Context",
+      "text": "What 'High Risk' Means in a Portfolio Context: A portfolio is high risk when multiple risk dimensions are simultaneously elevated: high volatility, high beta, high concentration, high drawdown potential, and poor diversification. Risk is multidimensional \u2014 a single metric is never sufficient. A portfolio can have moderate volatility but extremely high concentration (one stock is 60 percent of the portfolio). High risk in practice means: annualised vol above 18 percent, beta above 1.3, max drawdown potential above 25 percent, HHI above 0.25, and fewer than 5 distinct sector exposures. All five dimensions should be assessed together. Example: Portfolio A: 100 percent NVDA. Vol 55 percent, beta 1.8, MDD (2022) \u221266 percent, HHI 1.0, sectors 1 \u2014 extremely high risk. Portfolio B: 40 percent SPY, 30 percent TLT, 20 percent GLD, 10 percent cash. Vol ~10 percent, beta ~0.6, MDD ~\u221215 percent \u2014 moderate to low risk. Risk relevance: Understanding the components of high risk enables targeted remediation: too-high vol \u2192 add bonds or defensive equities; too-high beta \u2192 add uncorrelated assets; too-high concentration \u2192 rebalance into broader index exposure. Related concepts: volatility, beta, concentration_risk, max_drawdown, var, diversification.",
+      "rank": 1,
+      "score": 1.0,
+      "bm25_raw": 7.346941527401822,
+      "vec_sim": 0.6569097424603966,
+      "relevant_to": []
+    },
+    {
+      "citation_id": "concept-volatility",
+      "kb_source": "concepts",
+      "intent_tags": [
+        "concept_explanation",
+        "full_analysis",
+        "rebalance"
+      ],
+      "source_url": "internal://concepts",
+      "source_type": "curated_static",
+      "updated_at": "2026-04-01T16:54:51.773160",
+      "concept_key": "volatility",
+      "label": "Volatility (Standard Deviation)",
+      "text": "Volatility (Standard Deviation): Volatility measures how much an asset's returns fluctuate over time, expressed as the annualised standard deviation of daily returns. A stock with 30 percent annualised volatility is expected to move roughly \u00b130 percent from its current price in one year with 68 percent probability (one standard deviation). Volatility is symmetric \u2014 it penalises both upside and downside moves equally, which is why the Sortino ratio was developed as an improvement for risk assessment. Example: Daily returns with standard deviation of 1 percent \u2192 annualised vol = 1 percent \u00d7 \u221a252 \u2248 15.87 percent. A 100.00 thousand dollars portfolio can expect to fluctuate roughly \u00b115.87 thousand dollars in a typical year. Risk relevance: Risk classification: below 10 percent is low, 10-18 percent is moderate, 18-28 percent is high and above 28 percent is very high. Portfolios with volatility above 20 percent are generally considered high-risk for most retail investors. Related concepts: portfolio_volatility, volatility_21d, sharpe_ratio, sortino_ratio, var, beta.",
+      "rank": 2,
+      "score": 0.6835526222205887,
+      "bm25_raw": 3.2313783328181866,
+      "vec_sim": 0.5176493093727043,
+      "relevant_to": []
+    },
+    {
+      "citation_id": "concept-var",
+      "kb_source": "concepts",
+      "intent_tags": [
+        "concept_explanation",
+        "full_analysis",
+        "rebalance"
+      ],
+      "source_url": "internal://concepts",
+      "source_type": "curated_static",
+      "updated_at": "2026-04-01T16:54:51.773160",
+      "concept_key": "var",
+      "label": "Value at Risk \u2014 Loss Threshold at 95% Confidence (VaR)",
+      "text": "Value at Risk \u2014 Loss Threshold at 95 percent Confidence (VaR): VaR is the maximum expected daily loss at a given confidence level under normal market conditions. A 95 percent daily VaR of 2 percent means that; on 95 of every 100 trading days, the loss will not exceed 2 percent. The remaining 5 percent of days (roughly 12 per year) can produce losses exceeding the VaR threshold. VaR does NOT say how large those tail losses can be \u2014 that is CVaR (Conditional VaR). Calculated here as the negative 5th percentile of the historical daily return distribution (historical simulation method). Example: Portfolio value has an amount of 500.00 thousand dollars Daily VaR 95 percent is 1.5 percent. Dollar VaR is equal to 7.50 thousand dollars On approximately 12 trading days per year, losses are expected to exceed 7.50 thousand dollars Risk relevance: VaR is a regulatory standard (Basel III) and practical risk budget tool. Use alongside max drawdown for a complete picture \u2014 VaR captures typical tail days, MDD captures the worst sustained loss path. Related concepts: max_drawdown, volatility, skewness, excess_kurtosis.",
+      "rank": 3,
+      "score": 0.6587235230496723,
+      "bm25_raw": 3.829837816516172,
+      "vec_sim": 0.47141582752151817,
+      "relevant_to": []
+    },
+    {
+      "citation_id": "concept-liquidity_risk",
+      "kb_source": "concepts",
+      "intent_tags": [
+        "concept_explanation",
+        "full_analysis",
+        "rebalance"
+      ],
+      "source_url": "internal://concepts",
+      "source_type": "curated_static",
+      "updated_at": "2026-04-01T16:54:51.773160",
+      "concept_key": "liquidity_risk",
+      "label": "Liquidity Risk",
+      "text": "Liquidity Risk: Liquidity risk is the risk of not being able to buy or sell an asset quickly at a fair price without significantly moving the market. Applies to: small-cap and micro-cap stocks (wide bid-ask spreads), illiquid ETFs (low trading volume), real estate, and private equity. Liquidity risk becomes critical during market stress \u2014 when you most need to sell, liquidity evaporates and prices gap down. As a rule of thumb, keep individual positions below 5 percent of a stock's average daily volume. Example: Stock with average daily volume 50,000 shares; you hold 100,000 shares (2\u00d7 average daily volume). Selling your full position would take multiple days and likely move the price significantly against you. Risk relevance: Ensure at least 20-30 percent of the portfolio is in highly liquid assets (large-cap ETFs, Treasuries) for crisis resilience. Illiquid positions may show low volatility on paper but carry hidden risk in forced-sale scenarios. Related concepts: concentration_risk, var, diversification.",
+      "rank": 4,
+      "score": 0.6148797474394775,
+      "bm25_raw": 1.8214684847083378,
+      "vec_sim": 0.5072311173047784,
+      "relevant_to": []
+    },
+    {
+      "citation_id": "concept-concentration_risk",
+      "kb_source": "concepts",
+      "intent_tags": [
+        "concept_explanation",
+        "full_analysis",
+        "rebalance"
+      ],
+      "source_url": "internal://concepts",
+      "source_type": "curated_static",
+      "updated_at": "2026-04-01T16:54:51.773160",
+      "concept_key": "concentration_risk",
+      "label": "Concentration Risk",
+      "text": "Concentration Risk: Concentration risk is the excess risk arising from holding too much in one asset, sector, or correlated group \u2014 creating dependence on a single source of return or loss. Concentration risk has three dimensions: (1) single-name concentration (one stock too large), (2) sector concentration (too much in technology, for example), (3) factor concentration (all holdings are growth-style or all are rate-sensitive). All three can cause correlated losses even when the portfolio appears diversified by ticker count. Example: A 20-stock portfolio where 18 stocks are US technology: single-name HHI may be reasonable, but sector concentration is 90 percent. In a tech selloff (like 2022), all 18 positions fall simultaneously \u2014 the apparent diversification across tickers provides no protection. Risk relevance: Monitor HHI, risk contribution, pairwise correlations, and sector weights together. No single metric captures all forms of concentration. The remedy is always the same: diversify across low-correlated asset classes, not just across tickers within the same sector. Related concepts: herfindahl_index, risk_contribution, pairwise_correlations, diversification.",
+      "rank": 5,
+      "score": 0.6019203999365148,
+      "bm25_raw": 1.7932091077774932,
+      "vec_sim": 0.49615240640430264,
+      "relevant_to": []
+    },
+    {
+      "citation_id": "concept-risk_contribution",
+      "kb_source": "concepts",
+      "intent_tags": [
+        "concept_explanation",
+        "full_analysis",
+        "rebalance"
+      ],
+      "source_url": "internal://concepts",
+      "source_type": "curated_static",
+      "updated_at": "2026-04-01T16:54:51.773160",
+      "concept_key": "risk_contribution",
+      "label": "Risk Contribution (% of Portfolio Volatility)",
+      "text": "Risk Contribution (% of Portfolio Volatility): Risk contribution measures what percentage of total portfolio volatility each asset is responsible for, accounting for both its weight and its correlation with other holdings. A position with a small weight can have a disproportionately large risk contribution if it is highly volatile or highly correlated with other large positions. Formula: RC_i = w_i \u00d7 (\u03a3w)_i / \u03c3_p, where (\u03a3w)_i is the i-th element of the product of the covariance matrix and the weight vector, and \u03c3_p is portfolio volatility. Risk contributions sum to 100 percent of total portfolio variance. Example: My Portfolio has a share of 50 percent of NVDA, 30 percent of MSFT and 20 percent of TLT. NVDA risk contribution might be 75 percent despite being only 50 percent by weight \u2014 because NVDA is highly volatile and correlated with MSFT. TLT risk contribution might be negative (it reduces portfolio risk) or near zero due to low correlation with equities. Risk relevance: Risk contribution is more informative than weight for understanding true portfolio concentration. Two portfolios with identical weights but different correlations can have completely different risk contribution profiles. Use risk contribution to identify the single largest driver of portfolio volatility and consider trimming it. Related concepts: covariance_matrix, pairwise_correlations, concentration_risk, portfolio_volatility.",
+      "rank": 6,
+      "score": 0.598539498296094,
+      "bm25_raw": 2.0037233095421914,
+      "vec_sim": 0.48491277925408155,
+      "relevant_to": []
+    }
+  ]
+}
