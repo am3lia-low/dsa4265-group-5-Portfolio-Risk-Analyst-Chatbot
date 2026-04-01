@@ -1,8 +1,17 @@
-anaconda_projects/
+.claude/
+.env
 .venv/
+.virtual_documents/
+.DS_Store
+
+# Ignore Jupyter checkpoints and temp files
+anaconda_projects/
 __pycache__/
 .ipynb_checkpoints/
 RAG/.ipynb_checkpoints/__pycache__/
+RAG/.ipynb_checkpoints/
+RAG/.virtual_documents/
 RAG/retrieval_log/
-.claude/
-.env
+RAG/vector_db/
+RAG/output/
+RAG/knowledge_base/

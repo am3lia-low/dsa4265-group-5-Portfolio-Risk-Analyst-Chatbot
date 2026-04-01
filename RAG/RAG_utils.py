@@ -86,9 +86,9 @@ RETRIEVAL_LOG_DIR   = "retrieval_log"
 # Each intent specifies which Chroma collections to query
 INTENT_SOURCES: dict[str, list[str]] = {
     "full_analysis":     ["tickers", "portfolio", "macro", "concepts"],
-    "rebalance":         ["portfolio", "macro", "strategies", "concepts"],
-    "concept_explanation": ["concepts", "strategies"],
-    "trend_prediction":  ["macro", "tickers"],
+    "rebalance":         ["tickers", "portfolio", "macro", "strategies", "concepts"],
+    "concept_explanation": ["tickers", "concepts", "strategies"],
+    "trend_prediction":  ["tickers", "macro", "tickers"],
     "fallback":          ["tickers", "portfolio", "macro", "concepts", "strategies"],
 }
  
@@ -106,11 +106,16 @@ COLLECTION_LABELS = {
 # =============================================================================
  
 _INTENT_KEYWORDS: dict[str, list[str]] = {
+    "full_analysis": [
+        "risk", "portfolio", "analyse", "analyze", "high risk", "low risk",
+        "performance", "how is my portfolio", "overall", "assessment",
+        "dangerous", "safe", "exposure", "holdings", "good", "bad", "works", "compare"
+    ],
     "rebalance": [
         "rebalance", "rebalancing", "drift", "overweight", "underweight",
         "target weight", "allocation", "trim", "reallocate", "redistribute",
         "more", "less", "uneven", "refit", "should I sell", "should I buy",
-        "should I add", "compare 1/n split", "current", "current condition"
+        "should I add", "compare 1/n split", "current", "current condition", "compare"
     ],
     "concept_explanation": [
         "what is", "explain", "define", "definition", "meaning of",
@@ -128,11 +133,6 @@ _INTENT_KEYWORDS: dict[str, list[str]] = {
         "vix", "recession", "inflation", "rate", "sector", "momentum",
         "where is the market", "macro", "economic", "fed", "increase", "decrease",
         "future", "future condition", "foresee", "market", "economy",
-    ],
-    "full_analysis": [
-        "risk", "portfolio", "analyse", "analyze", "high risk", "low risk",
-        "performance", "how is my portfolio", "overall", "assessment",
-        "dangerous", "safe", "exposure", "holdings", "good", "bad", "works", 
     ],
 }
  
@@ -554,11 +554,11 @@ def _compute_retrieval_metrics(
         "diagnostic_flags":  flags,
         "justification": {
             "Recall@K": (
-                f"Recall@{k}={recall:.4f}. Measures whether all queried tickers appear "
-                f"in top-{k} results. Critical for financial Q&A — missed ticker = missed facts."
+                f"Recall@{k}={recall:.4f}. Recall@{k} measures whether all queried tickers appear "
+                f"in top-{k} results. This value is critical for financial Q&A. Missed ticker = missed facts."
             ),
             "MRR": (
-                f"MRR={mrr:.4f}. Measures rank position of first relevant chunk. "
+                f"MRR={mrr:.4f}. MRR measures the rank position of the first relevant chunk. "
                 "Low MRR buries relevant context below noise in the LLM prompt."
             ),
             "source_coverage": (
@@ -709,39 +709,39 @@ def retrieve_context(
 # =============================================================================
 # CLI DEMO
 # =============================================================================
-# if __name__ == "__main__":
-#     # Set up stores
-#     portfolio = PortfolioStore()
-#     if not portfolio.holdings:
-#         portfolio.set_holdings({
-#             "AAPL": {"weight": 0.30, "cost_basis": 150.00},
-#             "MSFT": {"weight": 0.25, "cost_basis": 280.00},
-#             "NVDA": {"weight": 0.20, "cost_basis": 400.00},
-#             "SPY":  {"weight": 0.15, "cost_basis": 420.00},
-#             "TLT":  {"weight": 0.10, "cost_basis": 95.00},
-#         })
-# 
-#     macro = MacroStore()
-#     concepts = ConceptStore()
-#     strategies = StrategyStore()
-# 
-#     # Single query
-#     query = "What is the Sharpe ratio and why does it matter?"
-# 
-#     print(f"\n{'='*65}")
-#     print(f"QUERY: {query}")
-#     print("="*65)
-# 
-#     chunks, metrics, log = retrieve_context(
-#         query=query,
-#         top_k=6,
-#         portfolio_store=portfolio,
-#         macro_store=macro,
-#         concept_store=concepts,
-#         strategy_store=strategies,
-#     )
-# 
-#     # Print evaluation metrics
-#     k_key = next(k for k in metrics if k.startswith("Recall@"))
-#     print(f"\n{k_key}={metrics[k_key]}  MRR={metrics['MRR']}  "
-#           f"Sources={metrics['retrieved_sources']}")
+if __name__ == "__main__":
+    # Set up stores
+    portfolio = PortfolioStore()
+    if not portfolio.holdings:
+        portfolio.set_holdings({
+            "AAPL": {"weight": 0.30, "cost_basis": 150.00},
+            "MSFT": {"weight": 0.25, "cost_basis": 280.00},
+            "NVDA": {"weight": 0.20, "cost_basis": 400.00},
+            "SPY":  {"weight": 0.15, "cost_basis": 420.00},
+            "TLT":  {"weight": 0.10, "cost_basis": 95.00},
+        })
+
+    macro = MacroStore()
+    concepts = ConceptStore()
+    strategies = StrategyStore()
+
+    # Single query
+    query = "How is AAPL so far, and is it risky?"
+
+    print(f"\n{'='*65}")
+    print(f"QUERY: {query}")
+    print("="*65)
+
+    chunks, metrics, log = retrieve_context(
+        query=query,
+        top_k=6,
+        portfolio_store=portfolio,
+        macro_store=macro,
+        concept_store=concepts,
+        strategy_store=strategies,
+    )
+
+    # Print evaluation metrics
+    k_key = next(k for k in metrics if k.startswith("Recall@"))
+    print(f"\n{k_key}={metrics[k_key]}  MRR={metrics['MRR']}  "
+          f"Sources={metrics['retrieved_sources']}")
