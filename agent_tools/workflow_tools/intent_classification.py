@@ -16,15 +16,45 @@ Models:
 
 import json
 import logging
+import os
 from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
- 
+
 from google import genai
 from google.genai import types
 from pydantic import BaseModel, Field
- 
+from dotenv import load_dotenv
+
 logger = logging.getLogger(__name__)
+
+# Load environment variables
+load_dotenv()
+
+# API key rotation for rate limit handling
+key_count = 6
+API_KEYS = [os.environ.get(f"GEMINI_API_KEY{k+1}") for k in range(key_count)]
+
+# Filter out any None values
+API_KEYS = [key for key in API_KEYS if key]
+
+CURRENT_KEY_INDEX = 0
+
+def get_client():
+    """Get a Gemini client with the current API key."""
+    global CURRENT_KEY_INDEX
+    if not API_KEYS:
+        # Fallback to default behavior if no API keys are configured
+        return genai.Client()
+    api_key = API_KEYS[CURRENT_KEY_INDEX]
+    return genai.Client(api_key=api_key)
+
+def rotate_api_key():
+    """Rotate to the next available API key."""
+    global CURRENT_KEY_INDEX
+    if API_KEYS:
+        CURRENT_KEY_INDEX = (CURRENT_KEY_INDEX + 1) % len(API_KEYS)
+        logger.info(f"Rotated to API key {CURRENT_KEY_INDEX + 1}")
 
 
 
@@ -114,19 +144,28 @@ Given a user message and context, classify it into the correct intent(s).
  
 ## The 7 intents
  
-1. **full_analysis** — Complete risk assessment of a portfolio.
-   Examples: "Analyze my portfolio", "Is my portfolio risky?", "Give me a risk breakdown"
+1. **full_analysis** — Complete, holistic risk assessment of a portfolio.
+   Examples: "Analyze my portfolio", "Is my portfolio risky?", "Give me a risk breakdown",
+   "How risky is this?", "Assess my portfolio", "How's my risk?"
    Also: first portfolio submission via form, or user explicitly asking for a fresh/new
    analysis ("analyze this new portfolio", "start fresh").
+   KEY: full_analysis is for BROAD, HOLISTIC questions about overall risk. If the user
+   asks something vague like "is this risky?" or "how's my risk?", that is full_analysis
+   because they want a comprehensive answer, not a single number.
  
 2. **rebalance** — Compare a PROPOSED change against the CURRENT portfolio.
    Examples: "What if I sell Tesla?", "Should I add bonds?", "Compare 50/50 split"
    Also: form update when a portfolio already exists (DEFAULT for form edits).
    KEY: rebalance is about COMPARISON (before vs after). Requires an existing portfolio.
  
-3. **specific_metric** — User asks about specific metric VALUE(S) for THEIR portfolio.
-   Examples: "What's my Sharpe ratio?", "Show me the VaR", "How skewed are my returns?"
-   KEY: the user wants their portfolio's number, not a general explanation.
+3. **specific_metric** — User asks about a SPECIFIC, NAMED metric for THEIR portfolio.
+   Examples: "What's my Sharpe ratio?", "Show me the VaR", "How skewed are my returns?",
+   "What's my max drawdown?", "Show me the beta"
+   KEY: the user must reference a SPECIFIC metric by name (Sharpe, VaR, beta, drawdown,
+   volatility, etc.). Vague questions like "is my portfolio risky?" or "how's my risk?"
+   are NOT specific_metric — those are full_analysis.
+   RULE: If you cannot identify a specific metric the user is asking about, it is
+   probably full_analysis, not specific_metric.
  
 4. **concept_explanation** — User asks what a concept/metric MEANS in general.
    Examples: "What is Value at Risk?", "Explain CVaR", "How does beta work?"
@@ -144,12 +183,29 @@ Given a user message and context, classify it into the correct intent(s).
  
 ## Critical disambiguation rules
  
+### full_analysis vs specific_metric (IMPORTANT — read carefully)
+- If the user names a SPECIFIC metric (Sharpe, VaR, beta, drawdown, sortino, skewness,
+  kurtosis, volatility, correlation, HHI, risk contribution) → specific_metric
+- If the user asks a BROAD or VAGUE question about risk/portfolio quality
+  ("is this risky?", "how's my risk?", "assess my portfolio", "risk breakdown",
+  single word "risk") → full_analysis
+- When in doubt between full_analysis and specific_metric → choose full_analysis.
+  It is better to give a comprehensive answer than to guess which single metric they want.
+ 
 ### full_analysis vs rebalance
 - First portfolio submission (is_first_portfolio=true) → always full_analysis
 - Form update + existing portfolio + no override language → rebalance
 - Form update + user says "analyze fresh" / "start over" / "new analysis" → full_analysis
 - Chat message with entirely new tickers + "analyze this" → full_analysis
 - Chat message proposing changes to current holdings → rebalance
+ 
+### Empty messages and form signals (IMPORTANT)
+- When the user message is EMPTY, the form signals tell you the intent:
+    - Empty message + portfolio_changed=true + is_first_portfolio=true → full_analysis
+    - Empty message + portfolio_changed=true + is_first_portfolio=false → rebalance
+    - Empty message + portfolio_changed=false → general_chat
+- Do NOT ignore form signals. They are the primary classification input when the
+  message is empty.
  
 ### specific_metric vs concept_explanation
 - "What's MY Sharpe ratio?" (possessive + metric) → specific_metric
@@ -168,10 +224,13 @@ Given a user message and context, classify it into the correct intent(s).
 - "Thanks! What's my Sharpe?" → primary: specific_metric. The thanks is incidental.
 - ONLY classify as general_chat when the ENTIRE message is a greeting/thanks with no query.
  
-### Portfolio-dependent intents without a portfolio
-- specific_metric + no portfolio → concept_explanation instead
-- trend_prediction + no portfolio → general_chat instead
-- rebalance + no portfolio → full_analysis instead
+### Portfolio-dependent intents without a portfolio (CRITICAL — NEVER SKIP)
+BEFORE you finalize your classification, check has_portfolio. If has_portfolio is false:
+- specific_metric → MUST become concept_explanation instead
+- trend_prediction → MUST become general_chat instead
+- rebalance → MUST become full_analysis instead
+These overrides are MANDATORY. A user cannot get metric values, trend predictions,
+or rebalance comparisons without a portfolio. No exceptions.
  
 ### Multi-intent messages
 - "Analyze my portfolio and explain what VaR means" →
@@ -230,6 +289,7 @@ def _build_context(
     message: str,
     recent_history: list[dict],
     portfolio_changed: bool,
+    has_portfolio: bool,
     is_first_portfolio: bool,
 ) -> str:
     """Build the user-turn context string for the LLM."""
@@ -249,6 +309,7 @@ def _build_context(
     return f"""## Portfolio state
 - portfolio_changed_this_turn: {portfolio_changed}
 - is_first_portfolio: {is_first_portfolio}
+- has_portfolio: {has_portfolio}
  
 ## Recent conversation history
 {history_text}
@@ -332,6 +393,7 @@ def classify_intent(
     message: str,
     recent_history: list[dict],
     portfolio_changed: bool = False,
+    has_portfolio: bool = False,
     is_first_portfolio: bool = False,
     client: Optional[genai.Client] = None,
 ) -> IntentResult:
@@ -364,16 +426,16 @@ def classify_intent(
  
     # Step 1: Initialize client
     if client is None:
-        client = genai.Client()
+        client = get_client()
  
     # Step 2: Build context
     context = _build_context(
-        message, recent_history, portfolio_changed, is_first_portfolio
+        message, recent_history, portfolio_changed, has_portfolio, is_first_portfolio
     )
  
     # Step 3: Call Gemini with structured output
     # Support for retrying with different clients
-    max_retries = 3  # Default max retries
+    max_retries = min(3, len(API_KEYS)) if API_KEYS else 3  # Default max retries
     retry_count = 0
 
     while retry_count < max_retries:
@@ -394,17 +456,21 @@ def classify_intent(
             error_str = str(e).lower()
             if "429" in error_str or "rate limit" in error_str:
                 retry_count += 1
-                # Re-raise the exception if we've exhausted our retries
-                if retry_count >= max_retries:
-                    logger.error("Gemini API call failed after %d retries due to rate limits: %s", max_retries, e)
+                if retry_count < max_retries:
+                    # Rotate to the next API key and create a new client
+                    rotate_api_key()
+                    client = get_client()
+                    logger.info("Hit rate limit, rotated to next API key. Retry attempt %d/%d", retry_count, max_retries)
+                    continue
+                else:
+                    # Exhausted all keys
+                    logger.error("Gemini API call failed after %d retries due to rate limits", max_retries)
                     return IntentResult(
                         primary_intent=Intent.GENERAL_CHAT,
                         confidence=0.0,
-                        reasoning=f"LLM call failed after {max_retries} retries due to rate limits: {e}",
+                        reasoning="429: limit exceeded",
                         requires_portfolio=False,
                     )
-                # Otherwise, let the caller handle retrying with a different client
-                raise e
             else:
                 # Some other error occurred
                 logger.error("Gemini API call failed: %s", e)
