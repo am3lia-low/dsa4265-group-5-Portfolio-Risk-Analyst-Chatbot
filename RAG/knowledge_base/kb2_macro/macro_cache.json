@@ -1,0 +1,34 @@
+{
+  "fetched_at": "2026-04-04T00:05:31.643735",
+  "fred": {
+    "FEDFUNDS": 3.64,
+    "CPIAUCSL": 2.6646,
+    "DGS10": 4.33,
+    "DGS2": 3.81,
+    "UNRATE": 4.3,
+    "A191RL1Q225SBEA": 0.7
+  },
+  "vix_current": 23.87,
+  "vix_30d_ago": 21.15,
+  "vix_trend": "rising",
+  "sector_30d_returns": {
+    "XLK": -0.0263,
+    "XLF": -0.0333,
+    "XLE": 0.0613,
+    "XLV": -0.0614,
+    "XLI": -0.0667,
+    "XLU": -0.0128,
+    "XLY": -0.0689,
+    "XLP": -0.0552,
+    "XLB": -0.0248,
+    "XLRE": -0.0427
+  },
+  "broad_market_30d": {
+    "SPY": -0.0402,
+    "QQQ": -0.041,
+    "IWM": -0.0383
+  },
+  "yield_curve_spread": 0.52,
+  "regime": "risk_on",
+  "regime_explanation": "Risk-on: VIX at 23.9, positive yield curve (0.52pp spread), inflation within range. Conditions favour growth equities and risk assets."
+}
