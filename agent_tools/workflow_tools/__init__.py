@@ -8,5 +8,5 @@ from .intent_classification import classify_intent, Intent, IntentResult
 __all__ = [
     "classify_intent",
     "Intent",
-    "IntentResult"
+    "IntentResult",
 ]
