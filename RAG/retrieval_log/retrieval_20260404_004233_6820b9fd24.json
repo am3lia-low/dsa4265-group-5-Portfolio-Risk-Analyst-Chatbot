@@ -1,0 +1,192 @@
+{
+  "query": "How is AAPL so far, and is it risky?",
+  "intent": "trend_prediction",
+  "timestamp": "2026-04-04T00:42:33.603038",
+  "resolved_tickers": [
+    "AAPL"
+  ],
+  "top_k": 10,
+  "score_threshold": 0.1,
+  "retrieval_metrics": {
+    "Recall@10": 1.0,
+    "MRR": 1.0,
+    "retrieved_sources": [
+      "macro",
+      "tickers"
+    ],
+    "diagnostic_flags": [],
+    "justification": {
+      "Recall@K": "Recall@10=1.0000. Relevant chunks in top-10 divided by total relevant chunks in the full pool. Expected sources: ['macro', 'tickers'].",
+      "MRR": "MRR=1.0000. Average reciprocal rank across all relevant chunks in results. Low MRR means relevant chunks are consistently ranked low."
+    }
+  },
+  "chunks_before_filter": 10,
+  "chunks_after_filter": 9,
+  "retrieved_chunks": [
+    {
+      "ticker": "AAPL",
+      "section": "fundamentals",
+      "text": "Fundamentals AAPL (Apple Inc.) operates in the Technology sector, Consumer Electronics industry, with a market capitalisation of 3761.49 billion dollars. AAPL has a trailing twelve-month P/E ratio of 32.35 and a forward P/E of 27.47. Earnings per share (EPS) for the trailing twelve months is 7.91 dollars. Revenue for the trailing twelve months is 435.62 billion dollars, with net income of 117.78 billion dollars. AAPL's gross margin is 0.4733, operating margin is 0.35369999999999996, and net profit margin is 0.2704. AAPL has a debt-to-equity ratio of 102.63 \u2014 elevated but common for large-caps with buyback programmes, and a current ratio of 0.97 (current liabilities exceed current assets \u2014 watch liquidity). The dividend yield is 0.0040999999999999995 with a payout ratio of 0.1304. Price &amp; Momentum: AAPL's current price is 255.92 dollars, within a 52-week range of 169.21 dollars to 288.62 dollars. AAPL's price returns are -0.0327 over the past 30 days, -0.0565 over the past 90 days, and +0.14800000000000002 over the past 12 months. AAPL is currently -0.017 below its 50-day SMA of 260.3 dollars, and +0.028999999999999998 above its 200-day SMA of 248.8 dollars. AAPL has an RSI (14-day) of 59.42, which is in neutral territory. Beta relative to the S&P 500 is 1.11 \u2014 moderately more volatile than the broader market. Average daily trading volume is 47781611 shares .",
+      "kb_source": "tickers",
+      "source_url": "https://finance.yahoo.com/quote/AAPL/",
+      "source_type": "yfinance",
+      "citation_id": "ticker-AAPL-fundamentals",
+      "rank": 1,
+      "score": 0.9592850298854769,
+      "bm25_raw": 1.2170872757056794,
+      "vec_sim": 0.5781913722978594,
+      "relevant_to": [
+        "AAPL"
+      ]
+    },
+    {
+      "ticker": "AAPL",
+      "section": "weekly_breakdown",
+      "text": "Weekly breakdown AAPL in the week of Jan 05, 2026 opened at 262.95 dollars and closed at 259.13 dollars (-0.015), trading in a range of 255.46 dollars to 263.43 dollars. AAPL in the week of Jan 12, 2026 opened at 258.92 dollars and closed at 255.29 dollars (-0.013999999999999999), trading in a range of 254.69 dollars to 261.58 dollars. AAPL in the week of Jan 19, 2026 opened at 252.49 dollars and closed at 247.81 dollars (-0.019), trading in a range of 243.19 dollars to 254.55 dollars. AAPL in the week of Jan 26, 2026 opened at 251.24 dollars and closed at 259.24 dollars (+0.032), trading in a range of 249.57 dollars to 261.71 dollars. AAPL in the week of Feb 02, 2026 opened at 259.79 dollars and closed at 277.86 dollars (+0.07), trading in a range of 258.97 dollars to 280.65 dollars. AAPL in the week of Feb 09, 2026 opened at 277.91 dollars and closed at 255.78 dollars (-0.08), trading in a range of 255.45 dollars to 280.18 dollars. AAPL in the week of Feb 16, 2026 opened at 258.05 dollars and closed at 264.58 dollars (+0.025), trading in a range of 255.54 dollars to 266.82 dollars. AAPL in the week of Feb 23, 2026 opened at 263.49 dollars and closed at 264.18 dollars (+0.003), trading in a range of 262.89 dollars to 276.11 dollars. AAPL in the week of Mar 02, 2026 opened at 262.41 dollars and closed at 257.46 dollars (-0.019), trading in a range of 254.37 dollars to 266.53 dollars. AAPL in the week of Mar 09, 2026 opened at 255.69 dollars and closed at 250.12 dollars (-0.022000000000000002), trading in a range of 249.52 dollars to 262.48 dollars. AAPL in the week of Mar 16, 2026 opened at 252.11 dollars and closed at 247.99 dollars (-0.016), trading in a range of 246.0 dollars to 255.13 dollars. AAPL in the week of Mar 23, 2026 opened at 253.97 dollars and closed at 248.8 dollars (-0.02), trading in a range of 248.07 dollars to 257.0 dollars. AAPL in the week of Mar 30, 2026 opened at 250.07 dollars and closed at 255.92 dollars (+0.023), trading in a range of 245.51 dollars to 256.18 dollars. Earnings &amp; Analyst Coverage: AAPL's next earnings release date is not yet announced. AAPL carries a buy \u2014 analysts lean bullish overall among 40 analysts. The mean analyst price target is 295.07 dollars, implying 0.153 upside from the current price.",
+      "kb_source": "tickers",
+      "source_url": "https://finance.yahoo.com/quote/AAPL/",
+      "source_type": "yfinance",
+      "citation_id": "ticker-AAPL-weekly_breakdown",
+      "rank": 2,
+      "score": 0.8971325868361146,
+      "bm25_raw": 1.4082038707478624,
+      "vec_sim": 0.49322415689506266,
+      "relevant_to": [
+        "AAPL"
+      ]
+    },
+    {
+      "ticker": "AAPL",
+      "section": "historical_last_60_trading_days",
+      "text": "Historical \u2014 last 60 trading days Trend summary: AAPL slightly declined 0.027000000000000003 from 262.95 dollars to 255.92 dollars between Jan 07, 2026 and Apr 02, 2026. The period high was 280.65 dollars and the period low was 243.19 dollars. The maximum drawdown over the period was -0.1124, measured peak to trough. The sharpest two-week rally of 0.121 centred around Feb 06. Average daily trading volume over the period was 47741010 shares . Volatility: AAPL's annualised realised volatility over the past 60 days is 0.25. The 14-day ATR for AAPL is 5.15 dollars, representing 0.020099999999999996 of the current price. AAPL recorded 6 trading days with gains exceeding 0.02 and 5 days with losses exceeding 0.02 during this period. The best single day was +0.0406 on Feb 02, and the worst was -0.05 on Feb 12. Volume: A volume increase of 1.9\u00d7 the 60-day average occurred on Jan 30, indicating elevated but not exceptional interest.",
+      "kb_source": "tickers",
+      "source_url": "https://finance.yahoo.com/quote/AAPL/",
+      "source_type": "yfinance",
+      "citation_id": "ticker-AAPL-historical_last_60_trading_days",
+      "rank": 3,
+      "score": 0.862646290869632,
+      "bm25_raw": 1.121618913976301,
+      "vec_sim": 0.5151681710558622,
+      "relevant_to": [
+        "AAPL"
+      ]
+    },
+    {
+      "citation_id": "macro-broad-market",
+      "kb_source": "macro",
+      "intent_tags": [
+        "trend_prediction",
+        "full_analysis"
+      ],
+      "source_url": "https://finance.yahoo.com",
+      "source_type": "yfinance",
+      "updated_at": "2026-04-04T00:05",
+      "text": "Broad market 30-day: S&P 500 negative 4.02 percent over 30 days; Nasdaq-100 negative 4.10 percent over 30 days; Russell 2000 negative 3.83 percent over 30 days. Small-cap outperforming large-cap \u2014 breadth expansion signal.",
+      "rank": 4,
+      "score": 0.48393371345272507,
+      "bm25_raw": 0.0,
+      "vec_sim": 0.399723282689186,
+      "relevant_to": [
+        "AAPL"
+      ]
+    },
+    {
+      "citation_id": "macro-vix",
+      "kb_source": "macro",
+      "intent_tags": [
+        "trend_prediction",
+        "full_analysis",
+        "rebalance"
+      ],
+      "source_url": "https://finance.yahoo.com",
+      "source_type": "yfinance",
+      "updated_at": "2026-04-04T00:05",
+      "text": "VIX at 23.9 \u2014 elevated uncertainty, options expensive. VIX has risen 2.7 points over 30 days.",
+      "rank": 5,
+      "score": 0.47272510744227114,
+      "bm25_raw": 0.0,
+      "vec_sim": 0.3904651122738569,
+      "relevant_to": [
+        "AAPL"
+      ]
+    },
+    {
+      "citation_id": "macro-regime",
+      "kb_source": "macro",
+      "intent_tags": [
+        "trend_prediction",
+        "full_analysis",
+        "rebalance"
+      ],
+      "source_url": "https://finance.yahoo.com",
+      "source_type": "fred+yfinance",
+      "updated_at": "2026-04-04T00:05",
+      "text": "Current market regime: RISK_ON. Risk-on: VIX at 23.9, positive yield curve (0.52pp spread), inflation within range. Conditions favour growth equities and risk assets.",
+      "rank": 6,
+      "score": 0.4714945127838816,
+      "bm25_raw": 0.0,
+      "vec_sim": 0.38944865625346164,
+      "relevant_to": [
+        "AAPL"
+      ]
+    },
+    {
+      "citation_id": "macro-sectors",
+      "kb_source": "macro",
+      "intent_tags": [
+        "trend_prediction",
+        "rebalance"
+      ],
+      "source_url": "https://finance.yahoo.com",
+      "source_type": "yfinance",
+      "updated_at": "2026-04-04T00:05",
+      "text": "30-day sector leaders: Energy (positive 6.13 percent), Utilities (negative 1.28 percent), Materials (negative 2.48 percent). Laggards: Healthcare (negative 6.14 percent), Industrials (negative 6.67 percent), Consumer Discretionary (negative 6.89 percent). Defensive sector leadership \u2014 bearish signal for broader market.",
+      "rank": 7,
+      "score": 0.45532227344896964,
+      "bm25_raw": 0.0,
+      "vec_sim": 0.3760905858903443,
+      "relevant_to": [
+        "AAPL"
+      ]
+    },
+    {
+      "citation_id": "macro-economy",
+      "kb_source": "macro",
+      "intent_tags": [
+        "trend_prediction",
+        "full_analysis"
+      ],
+      "source_url": "https://fred.stlouisfed.org",
+      "source_type": "fred",
+      "updated_at": "2026-04-04T00:05",
+      "text": "CPI inflation is 2.66 percent YoY, near the Fed's target. Unemployment rate is 4.3 percent. GDP growth last quarter was 0.7 percent annualised (expansion).",
+      "rank": 8,
+      "score": 0.42074863447337335,
+      "bm25_raw": 0.0,
+      "vec_sim": 0.34753318622658597,
+      "relevant_to": [
+        "AAPL"
+      ]
+    },
+    {
+      "citation_id": "macro-rates",
+      "kb_source": "macro",
+      "intent_tags": [
+        "trend_prediction",
+        "full_analysis",
+        "rebalance"
+      ],
+      "source_url": "https://fred.stlouisfed.org",
+      "source_type": "fred",
+      "updated_at": "2026-04-04T00:05",
+      "text": "Federal Funds rate is 3.64 percent. 10-year Treasury yield is 4.33 percent. 2-year Treasury yield is 3.81 percent. Yield curve is positive (0.52pp spread), consistent with growth expectations.",
+      "rank": 9,
+      "score": 0.41795501526611684,
+      "bm25_raw": 0.0,
+      "vec_sim": 0.3452256911935556,
+      "relevant_to": [
+        "AAPL"
+      ]
+    }
+  ]
+}

@@ -8,6 +8,10 @@ from .data_tools import (
     valid_weights
 )
 
+# RAG: Retrieve_context()
+from ..RAG.RAG_utils import retrieve_context  # Added: Import retrieve_context 
+
+
 # Workflow tools (these may have optional dependencies)
 try:
     from .workflow_tools import (
@@ -36,5 +40,6 @@ if _has_workflow_tools:
     __all__.extend([
         "classify_intent",
         "Intent",
-        "IntentResult"
+        "IntentResult",
+        "retrieve_context", # I've changed the final result into a Pydantic model (View RAG.ipynb for examples!)
     ])

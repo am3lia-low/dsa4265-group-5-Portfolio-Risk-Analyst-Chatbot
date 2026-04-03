@@ -12,3 +12,6 @@ RAG/.ipynb_checkpoints/__pycache__/
 RAG/.ipynb_checkpoints/
 RAG/.virtual_documents/
 RAG/vector_db/
+RAG/knowledge_base/
+RAG/retrieval_log/
+RAG/outputs/

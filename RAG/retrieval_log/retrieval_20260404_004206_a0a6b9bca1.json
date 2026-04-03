@@ -1,0 +1,127 @@
+{
+  "query": "What's sharpe ratio",
+  "intent": "concept_explanation",
+  "timestamp": "2026-04-04T00:42:06.035543",
+  "resolved_tickers": [],
+  "top_k": 5,
+  "score_threshold": 0.1,
+  "retrieval_metrics": {
+    "Recall@5": 0.1515,
+    "MRR": 1.0,
+    "retrieved_sources": [
+      "concepts",
+      "strategies"
+    ],
+    "diagnostic_flags": [
+      "LOW_RECALL@5=0.151: too many relevant chunks missed in top-5"
+    ],
+    "justification": {
+      "Recall@K": "Recall@5=0.1515. Relevant chunks in top-5 divided by total relevant chunks in the full pool. Expected sources: ['concepts', 'strategies'].",
+      "MRR": "MRR=1.0000. Average reciprocal rank across all relevant chunks in results. Low MRR means relevant chunks are consistently ranked low."
+    }
+  },
+  "chunks_before_filter": 5,
+  "chunks_after_filter": 5,
+  "retrieved_chunks": [
+    {
+      "citation_id": "concept-sharpe_ratio",
+      "kb_source": "concepts",
+      "intent_tags": [
+        "concept_explanation",
+        "full_analysis",
+        "rebalance"
+      ],
+      "source_url": "internal://concepts",
+      "source_type": "curated_static",
+      "updated_at": "2026-04-04T00:42:02.235823",
+      "concept_key": "sharpe_ratio",
+      "label": "Sharpe Ratio",
+      "text": "Sharpe Ratio: The Sharpe ratio measures risk-adjusted return: excess return earned per unit of total volatility (risk) taken. Formula: (Portfolio Return \u2212 Risk-Free Rate) / Portfolio Volatility. Values above 1.0 are generally considered good; above 2.0 is excellent. The risk-free rate is typically the current T-bill rate or Fed Funds rate. Sharpe is symmetric \u2014 it penalises upside volatility equally to downside volatility. Example: The return is 12 percent, risk-free rate is 5 percent and the volatility is 18 percent. Sharpe will be equal to (12 percent \u2212 5 percent) divided by 18 percent = 0.39. This is below 1.0 \u2014 the portfolio is not well-compensated for the risk it carries. Risk relevance: A falling Sharpe over time signals deteriorating risk-adjusted performance. Use Sharpe to compare portfolios with similar return goals \u2014 a portfolio with lower return but higher Sharpe is taking more efficient risk. Related concepts: sortino_ratio, volatility, max_drawdown, portfolio_volatility.",
+      "rank": 1,
+      "score": 0.8898303759868678,
+      "bm25_raw": 2.087113476533018,
+      "vec_sim": 0.5625646151312207,
+      "relevant_to": []
+    },
+    {
+      "citation_id": "concept-sortino_ratio",
+      "kb_source": "concepts",
+      "intent_tags": [
+        "concept_explanation",
+        "full_analysis",
+        "rebalance"
+      ],
+      "source_url": "internal://concepts",
+      "source_type": "curated_static",
+      "updated_at": "2026-04-04T00:42:02.235823",
+      "concept_key": "sortino_ratio",
+      "label": "Sortino Ratio",
+      "text": "Sortino Ratio: The Sortino ratio modifies the Sharpe ratio to penalise only downside volatility (losses), not upside volatility (gains). Formula: (Portfolio Return \u2212 Risk-Free Rate) divided by the Downside Deviation. Downside deviation is the standard deviation of only negative-return days. Sortino is more appropriate than Sharpe for portfolios with positively skewed returns (options, trend-following) where upside volatility should not be penalised. Example: The return is 14 percent, the risk-free rate is 5 percent, and the downside deviation is 6 percent. Sortino will be equal to (14 percent \u2212 5 percent) divided by 6 percent, which is equal to 1.5. Healthy ratio \u2014 the portfolio earns 1.5 units of excess return per unit of downside risk. Risk relevance: Use Sortino when assets have asymmetric return distributions. If Sharpe is low but Sortino is high, the portfolio's volatility is mostly upside \u2014 a less concerning situation than if both are low. Related concepts: sharpe_ratio, skewness, volatility, max_drawdown.",
+      "rank": 2,
+      "score": 0.8703361281264934,
+      "bm25_raw": 3.2983869926234592,
+      "vec_sim": 0.4583584634498733,
+      "relevant_to": []
+    },
+    {
+      "citation_id": "concept-volatility",
+      "kb_source": "concepts",
+      "intent_tags": [
+        "concept_explanation",
+        "full_analysis",
+        "rebalance"
+      ],
+      "source_url": "internal://concepts",
+      "source_type": "curated_static",
+      "updated_at": "2026-04-04T00:42:02.235823",
+      "concept_key": "volatility",
+      "label": "Volatility (Standard Deviation)",
+      "text": "Volatility (Standard Deviation): Volatility measures how much an asset's returns fluctuate over time, expressed as the annualised standard deviation of daily returns. A stock with 30 percent annualised volatility is expected to move roughly \u00b130 percent from its current price in one year with 68 percent probability (one standard deviation). Volatility is symmetric \u2014 it penalises both upside and downside moves equally, which is why the Sortino ratio was developed as an improvement for risk assessment. Example: Daily returns with standard deviation of 1 percent \u2192 annualised vol = 1 percent \u00d7 \u221a252 \u2248 15.87 percent. A 100.00 thousand dollars portfolio can expect to fluctuate roughly \u00b115.87 thousand dollars in a typical year. Risk relevance: Risk classification: below 10 percent is low, 10-18 percent is moderate, 18-28 percent is high and above 28 percent is very high. Portfolios with volatility above 20 percent are generally considered high-risk for most retail investors. Related concepts: portfolio_volatility, volatility_21d, sharpe_ratio, sortino_ratio, var, beta.",
+      "rank": 3,
+      "score": 0.6825483728644195,
+      "bm25_raw": 2.0449140465104465,
+      "vec_sim": 0.39906419853422564,
+      "relevant_to": []
+    },
+    {
+      "citation_id": "strategy-risk_parity",
+      "kb_source": "strategies",
+      "intent_tags": [
+        "rebalance",
+        "full_analysis"
+      ],
+      "source_url": "internal://strategies",
+      "source_type": "curated_static",
+      "updated_at": "2026-04-04T00:42:02.239630",
+      "strategy_key": "risk_parity",
+      "category": "asset_allocation",
+      "label": "Risk Parity",
+      "text": "Risk Parity (asset_allocation): WHAT: Risk parity allocates capital so that each asset class contributes equally to portfolio risk (measured by volatility), rather than contributing equal dollar amounts. Because bonds have much lower volatility than equities, bonds are overweighted (often with leverage) to achieve equal risk contribution. WHEN: Most appropriate for: institutional investors, long time horizons, and environments with stable or declining rates. Risk parity is most compelling when the expected Sharpe ratios of all asset classes are similar the strategy then maximises diversification without tilting toward any single risk factor. HOW: Step 1: Estimate volatility for each asset class. Step 2: Calculate risk contribution weights: weight_i = (1/vol_i) / sum(1/vol_j). Step 3: Apply weights (often using leverage to boost bond returns). Example: equities vol 20 percent, bonds vol 6 percent \u2192 risk-parity weight: bonds get 3.3\u00d7 more weight than equities. Typical result: ~25 percent equities, 50 percent+ bonds (levered), 10 to 15 percent commodities. WHY: Ray Dalio's Bridgewater research showed that risk parity delivered better risk-adjusted returns than 60/40 over long periods because it is more genuinely diversified across economic environments. The diversification benefit comes from holding assets that each perform well in a different macro regime. RISKS: Leverage amplifies losses in market dislocations. In 2022, rising rates hurt the levered bond component severely. Requires sophisticated rebalancing and access to leverage (margin or futures). Not suitable for simple retail accounts. Trigger conditions: Investor seeks maximum diversification across macro environments; Rates are stable or falling (bonds provide both income and appreciation); Investor has access to leverage and understands the risks. Related frameworks: all_weather, sixty_forty, threshold_rebalancing.",
+      "rank": 4,
+      "score": 0.5181585885457595,
+      "bm25_raw": 0.0,
+      "vec_sim": 0.4164252670602596,
+      "relevant_to": []
+    },
+    {
+      "citation_id": "concept-herfindahl_index",
+      "kb_source": "concepts",
+      "intent_tags": [
+        "concept_explanation",
+        "full_analysis",
+        "rebalance"
+      ],
+      "source_url": "internal://concepts",
+      "source_type": "curated_static",
+      "updated_at": "2026-04-04T00:42:02.235823",
+      "concept_key": "herfindahl_index",
+      "label": "Herfindahl-Hirschman Index (HHI)",
+      "text": "Herfindahl-Hirschman Index (HHI): The HHI measures portfolio concentration as the sum of squared weights. It ranges from 1/N (perfectly equal-weight, maximum diversification) to 1.0 (single position, maximum concentration). HHI = \u03a3 w_i\u00b2. For a 5-asset equal-weight portfolio: HHI = 5 \u00d7 (0.2\u00b2) = 0.20. For a single position: HHI = 1.0. A useful normalised version: (HHI \u2212 1/N) / (1 \u2212 1/N) maps the range to [0, 1] regardless of portfolio size. Originally used in antitrust economics to measure market concentration; adapted for portfolio analysis. Example: My portfolio has a share of AAPL of 50 percent, MSFT of 30 percent and NVDA of 20 percent. HHI = 0.5\u00b2 + 0.3\u00b2 + 0.2\u00b2 is equal to 0.25 + 0.09 + 0.04 is equal to 0.38. Equal-weight 3-stock benchmark HHI is then equal to 0.33. The concentrated portfolio has HHI 0.38 vs benchmark 0.33 \u2014 moderately more concentrated than equal-weight. Risk relevance: HHI above 0.25 in a 10-asset portfolio signals meaningful concentration. HHI above 0.5 in any portfolio signals very high single-name risk. Rebalancing is the remedy \u2014 trim the largest weights to bring HHI down. Related concepts: concentration_risk, risk_contribution, pairwise_correlations, rebalancing.",
+      "rank": 5,
+      "score": 0.5048401882667853,
+      "bm25_raw": 0.0,
+      "vec_sim": 0.4057217517358244,
+      "relevant_to": []
+    }
+  ]
+}
