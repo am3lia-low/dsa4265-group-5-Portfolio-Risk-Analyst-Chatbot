@@ -11,35 +11,38 @@ from .data_tools import (
 # RAG: Retrieve_context()
 from ..RAG.RAG_utils import retrieve_context  # Added: Import retrieve_context 
 
+# ML risk tools
+from .ml_risk_tools import (
+    current_portfolio_risk_tool,
+    future_portfolio_risk
+)
 
-# Workflow tools (these may have optional dependencies)
-try:
-    from .workflow_tools import (
-        classify_intent,
-        Intent,
-        IntentResult
-    )
-    _has_workflow_tools = True
-except ImportError:
-    # Workflow tools require additional dependencies (Google Generative AI)
-    _has_workflow_tools = False
-    classify_intent = None
-    Intent = None
-    IntentResult = None
+# Workflow tools
+from .workflow_tools import (
+    classify_intent,
+    Intent,
+    IntentResult
+)
 
 # Export everything
 __all__ = [
     "fetch_price_data",
     "calculate_returns",
     "valid_tickers",
-    "valid_weights"
+    "valid_weights",
+    "classify_intent",
+    "Intent",
+    "IntentResult",
+    "retrieve_context",
+    "current_portfolio_risk_tool",
+    "future_portfolio_risk"
 ]
 
 # Only export workflow tools if they're available
-if _has_workflow_tools:
-    __all__.extend([
-        "classify_intent",
-        "Intent",
-        "IntentResult",
-        "retrieve_context", # I've changed the final result into a Pydantic model (View RAG.ipynb for examples!)
-    ])
+# if _has_workflow_tools:
+#     __all__.extend([
+#         "classify_intent",
+#         "Intent",
+#         "IntentResult",
+#         "retrieve_context", # I've changed the final result into a Pydantic model (View RAG.ipynb for examples!)
+#     ])
