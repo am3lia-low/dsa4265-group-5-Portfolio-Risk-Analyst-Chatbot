@@ -2,8 +2,8 @@
 import pandas as pd
 import numpy as np
 import datetime
-from data_tools.fetch_price_data import fetch_price_data
-from data_tools.calculate_returns import calculate_returns
+from agent_tools.data_tools.fetch_price_data import fetch_price_data
+from agent_tools.data_tools.calculate_returns import calculate_returns
 
 def risk_metrics_tool(returns: pd.DataFrame, weights: np.ndarray) -> dict:
     """

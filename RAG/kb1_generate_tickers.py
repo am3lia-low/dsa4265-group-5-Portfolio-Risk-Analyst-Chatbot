@@ -732,8 +732,10 @@ def convert_tickers_into_txt(
       — ready for direct upsert into Chroma collection "tickers"
     """
     chunks = []
+    now    = self._data.get("fetched_at", datetime.datetime.now().isoformat())[:16]
 
     with open(output_txt, "w", encoding="utf-8") as txt_f:
+        f.write(f"# kb1 TICKERS — generated {now}\n\n")
         for filename in sorted(os.listdir(html_folder)):
             if not filename.endswith(".html"):
                 continue
@@ -764,6 +766,61 @@ def convert_tickers_into_txt(
                     })
  
     print(f"✅ kb1: {len(chunks)} chunks written to {output_txt}")
+    return chunks
+
+def convert_tickers_into_txt(
+    html_folder: str = OUTPUT_DIR_HTML,
+    output_txt:  str = OUTPUT_TXT,
+) -> list[dict]:
+    """
+    Convert ticker HTML files into:
+    1. A clean TXT audit file (kb2-style)
+    2. A flat list of chunks for Chroma
+
+    Returns
+    ----------
+    list of chunk dicts
+    """
+    chunks = []
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    # ── Build chunks first ─────────────────────────────────────────────
+    for filename in sorted(os.listdir(html_folder)):
+        if not filename.endswith(".html"):
+            continue
+
+        ticker = filename.replace(".html", "").upper()
+        path   = os.path.join(html_folder, filename)
+
+        with open(path, "r", encoding="utf-8") as f:
+            html_text = f.read()
+
+        sections = _split_sections(html_text)
+
+        for sec_key, sec_text in sections.items():
+            if not sec_text.strip():
+                continue
+
+            chunks.append({
+                "ticker":      ticker,
+                "section":     sec_key,
+                "text":        sec_text,
+                "kb_source":   "tickers",
+                "source_url":  f"https://finance.yahoo.com/quote/{ticker}/",
+                "source_type": "yfinance",
+                "citation_id": f"ticker-{ticker}-{sec_key}",
+            })
+
+    # ──  TXT export ────────────────────────────────────────────────────────────
+    with open(output_txt, "w", encoding="utf-8") as txt_f:
+        txt_f.write(f"# kb1 TICKERS — generated {now}\n\n")
+
+        for c in chunks:
+            txt_f.write(f"--- {c['citation_id']} ---\n")
+            txt_f.write(f"Ticker: {c['ticker']} | Section: {c['section']}\n")
+            txt_f.write(c["text"] + "\n\n")
+
+    print(f"  ✓ kb1 TXT → {output_txt}  ({len(chunks)} chunks)")
     return chunks
 
 # ── CLI ───────────────────────────────────────────────────────────────────────

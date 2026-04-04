@@ -7,29 +7,26 @@ Knowledge bases
 ---------------
   kb0  ticker resolver          — query → ticker symbols
   kb1  ticker profiles          — yfinance fundamentals + price history
-  kb2  portfolio store          — holdings, weights, portfolio-level risk metrics
-  kb3  macro store              — FRED rates, VIX, sector ETFs, regime classification
-  kb4  concept definitions      — static curated financial concepts
-  kb5  strategy frameworks      — rebalancing rules, allocation frameworks
+  kb2  macro store              — FRED rates, VIX, sector ETFs, regime classification
+  kb3  concept definitions      — static curated financial concepts
+  kb4  strategy frameworks      — rebalancing rules, allocation frameworks
  
 Intent routing
 --------------
-  full_analysis    → kb1 (ticker) + kb2 (portfolio) + kb3 (macro) + kb4 (concepts)
-  rebalance        → kb2 (portfolio drift) + kb3 (regime) + kb5 (frameworks) + kb4
-  concept_explanation → kb4 (concepts) + kb5 (strategies)
-  trend_prediction → kb3 (macro) + kb1 (ticker momentum)
-  fallback         → all KB sources
+  full_analysis    → kb1 (ticker) + kb4 (strategies)
+  concept_explanation → kb3 (concepts) + kb4 (strategies)
+  trend_prediction → kb1 (ticker) + kb2 (macro)
+  "none"           → all KB sources
  
 Pipeline
 --------
-  1. Intent detection from query
-  2. Source selection per intent
-  3. KB refresh (staleness check for dynamic sources)
-  4. Unified chunk pool from all relevant sources
-  5. Hybrid BM25 + vector retrieval
-  6. Post-processing: relevance filter + citation enforcement
-  7. Retrieval evaluation: Recall@K + MRR
-  8. Persist logs (retrieval_log)
+  1. Source selection per intent
+  2. KB refresh (staleness check for dynamic sources)
+  3. Unified chunk pool from all relevant sources
+  4. Hybrid BM25 + vector retrieval
+  5. Post-processing: relevance filter + citation enforcement
+  6. Retrieval evaluation: Recall@K + MRR
+  7. Persist logs (retrieval_log)
 """
 
 from __future__ import annotations
@@ -49,18 +46,33 @@ import chromadb
 from sentence_transformers import SentenceTransformer
 from rank_bm25 import BM25Okapi
  
+from pathlib import Path
+from dotenv import load_dotenv
 warnings.filterwarnings("ignore")
+
+# ── Retrieve FRED_API_KEY ──────────────────────────────────────────────────────────
+# Automatically find the .env in the main folder
+BASE_DIR = Path(__file__).resolve().parent.parent # Go up from RAG/ to main folder
+ENV_PATH = BASE_DIR / ".env"
+
+if ENV_PATH.exists():
+    load_dotenv(dotenv_path=ENV_PATH)
+    print(f"Loaded .env from {ENV_PATH}")
+else:
+    print("⚠ .env file not found in the main folder")
+
+# Access env variable:
+FRED_API_KEY = os.getenv("FRED_API_KEY")
  
 # ── Local KB modules ──────────────────────────────────────────────────────────
 import kb0_ticker_resolver
 import kb1_generate_tickers
-import kb2_portfolio
-import kb3_macro_regime
-import kb4_concepts
-import kb5_strategies
+import kb2_macro_regime
+import kb3_concepts
+import kb4_strategies
  
 for _mod in [kb0_ticker_resolver, kb1_generate_tickers,
-             kb2_portfolio, kb3_macro_regime, kb4_concepts, kb5_strategies]:
+             kb2_macro_regime, kb3_concepts, kb4_strategies]:
     importlib.reload(_mod)
  
 from kb0_ticker_resolver import resolve_tickers_from_query
@@ -70,10 +82,9 @@ from kb1_generate_tickers import (
     build_ticker_meta as _build_ticker_meta,
     OUTPUT_DIR_HTML, OUTPUT_TXT
 )
-from kb2_portfolio import PortfolioStore
-from kb3_macro_regime import MacroStore
-from kb4_concepts  import ConceptStore
-from kb5_strategies import StrategyStore
+from kb2_macro_regime import MacroStore
+from kb3_concepts  import ConceptStore
+from kb4_strategies import StrategyStore
 
 # ── Config ────────────────────────────────────────────────────────────────────
 VECTOR_DB_DIR       = "vector_db"
@@ -85,85 +96,22 @@ RETRIEVAL_LOG_DIR   = "retrieval_log"
 # ── Intent → KB source mapping ────────────────────────────────────────────────
 # Each intent specifies which Chroma collections to query
 INTENT_SOURCES: dict[str, list[str]] = {
-    "full_analysis":     ["tickers", "portfolio", "macro", "concepts"],
-    "rebalance":         ["tickers", "portfolio", "macro", "strategies", "concepts"],
-    "concept_explanation": ["tickers", "concepts", "strategies"],
-    "trend_prediction":  ["tickers", "macro", "tickers"],
-    "fallback":          ["tickers", "portfolio", "macro", "concepts", "strategies"],
+    "full_analysis":     ["tickers", "strategies"],
+    "concept_explanation": ["concepts", "strategies"],
+    "trend_prediction":  ["tickers", "macro"],
+    "fallback":          ["tickers", "macro", "concepts", "strategies"],
 }
  
 # Collection name → display label
 COLLECTION_LABELS = {
     "tickers":    "Ticker Profiles (yfinance)",
-    "portfolio":  "Portfolio Store",
     "macro":      "Macro & Regime (FRED + yfinance)",
     "concepts":   "Concept Definitions",
     "strategies": "Strategy Frameworks",
 }
 
 # =============================================================================
-# SECTION 1 — INTENT DETECTION
-# =============================================================================
- 
-_INTENT_KEYWORDS: dict[str, list[str]] = {
-    "full_analysis": [
-        "risk", "portfolio", "analyse", "analyze", "high risk", "low risk",
-        "performance", "how is my portfolio", "overall", "assessment",
-        "dangerous", "safe", "exposure", "holdings", "good", "bad", "works", "compare"
-    ],
-    "rebalance": [
-        "rebalance", "rebalancing", "drift", "overweight", "underweight",
-        "target weight", "allocation", "trim", "reallocate", "redistribute",
-        "more", "less", "uneven", "refit", "should I sell", "should I buy",
-        "should I add", "compare 1/n split", "current", "current condition", "compare"
-    ],
-    "concept_explanation": [
-        "what is", "explain", "define", "definition", "meaning of",
-        "what does", "how does", "tell me about", "concept", "covariance matrix",
-        "portfolio volatility", "volatility", "var", "cvar", "maximum drawdown",
-        "sharpe", "sortino", "skewness", "excess kurtosis", "beta", "hhi",
-        "pairwise correlation", "risk contribution", "diversification", 
-        "yield curve", "duration", "diversification", "rebalancing", 
-        "asset allocation", "yield curve", "interest rate risk", "recession risk", 
-        "liquidity risk", "works"
-        
-    ],
-    "trend_prediction": [
-        "trend", "market", "outlook", "forecast", "prediction", "regime",
-        "vix", "recession", "inflation", "rate", "sector", "momentum",
-        "where is the market", "macro", "economic", "fed", "increase", "decrease",
-        "future", "future condition", "foresee", "market", "economy",
-    ],
-}
- 
- 
-def detect_intent(query: str) -> str:
-    """
-    Detect the primary intent from a natural-language query.
- 
-    Returns one of: "full_analysis" | "rebalance" | "concept_explanation" |
-                    "trend_prediction" | "fallback"
- 
-    Strategy: count keyword matches per intent, return highest scorer.
-    Ties default to "full_analysis". No match → "fallback".
-    """
-    q_lower = query.lower()
-    scores  = {intent: 0 for intent in _INTENT_KEYWORDS}
- 
-    for intent, keywords in _INTENT_KEYWORDS.items():
-        for kw in keywords:
-            if kw in q_lower:
-                scores[intent] += 1
- 
-    best_score = max(scores.values())
-    if best_score == 0:
-        return "fallback"
- 
-    # Return the intent with the highest score
-    return max(scores, key=lambda k: scores[k])
-
-# =============================================================================
-# SECTION 2 — KB SOURCE MANAGEMENT
+# SECTION 1 — KB SOURCE MANAGEMENT
 # =============================================================================
  
 def _kb1_file_path(ticker: str) -> str:
@@ -209,7 +157,6 @@ def _load_kb1_documents() -> list[dict]:
 def _collect_all_chunks(
     intent:           str,
     resolved_tickers: list[str],
-    portfolio_store:  PortfolioStore | None = None,
     macro_store:      MacroStore     | None = None,
     concept_store:    ConceptStore   | None = None,
     strategy_store:   StrategyStore  | None = None,
@@ -241,17 +188,9 @@ def _collect_all_chunks(
         all_chunks.extend(filtered)
         print(f"    → {len(filtered)} ticker chunks")
  
-    # ── kb2: Portfolio ─────────────────────────────────────────────────────
-    if "portfolio" in sources and portfolio_store is not None:
-        print("  📥 kb2: loading portfolio chunks + writing TXT")
-        chunks = portfolio_store.generate_chunks(force=force_refresh)
-        portfolio_store.export_txt()
-        all_chunks.extend(chunks)
-        print(f"    → {len(chunks)} portfolio chunks")
- 
-    # ── kb3: Macro ─────────────────────────────────────────────────────────
+    # ── kb2: Macro ─────────────────────────────────────────────────────────
     if "macro" in sources and macro_store is not None:
-        print("  📥 kb3: loading macro chunks + writing TXT")
+        print("  📥 kb2: loading macro chunks + writing TXT")
         if force_refresh or macro_store._is_stale():
             macro_store.refresh(force=force_refresh)
         chunks = macro_store.generate_chunks()
@@ -259,17 +198,17 @@ def _collect_all_chunks(
         all_chunks.extend(chunks)
         print(f"    → {len(chunks)} macro chunks")
  
-    # ── kb4: Concepts ──────────────────────────────────────────────────────
+    # ── kb3: Concepts ──────────────────────────────────────────────────────
     if "concepts" in sources and concept_store is not None:
-        print("  📥 kb4: loading concept chunks + writing TXT")
+        print("  📥 kb3: loading concept chunks + writing TXT")
         chunks = concept_store.generate_chunks()
         concept_store.export_txt()
         all_chunks.extend(chunks)
         print(f"    → {len(chunks)} concept chunks")
  
-    # ── kb5: Strategies ────────────────────────────────────────────────────
+    # ── kb4: Strategies ────────────────────────────────────────────────────
     if "strategies" in sources and strategy_store is not None:
-        print("  📥 kb5: loading strategy chunks + writing TXT")
+        print("  📥 kb4: loading strategy chunks + writing TXT")
         chunks = strategy_store.generate_chunks()
         strategy_store.export_txt()
         all_chunks.extend(chunks)
@@ -279,7 +218,7 @@ def _collect_all_chunks(
     return all_chunks
 
 # =============================================================================
-# SECTION 3 — CHROMA: MULTI-COLLECTION MANAGEMENT
+# SECTION 2 — CHROMA: MULTI-COLLECTION MANAGEMENT
 # =============================================================================
  
 def _get_or_create_collection(
@@ -288,13 +227,12 @@ def _get_or_create_collection(
     documents:  list[dict],
     model:      SentenceTransformer,
 ) -> chromadb.Collection:
-    """Upsert documents into a named Chroma collection."""
     collection = client.get_or_create_collection(name=name)
     if not documents:
         return collection
- 
-    texts     = [d["text"] for d in documents]
-    metadatas = [
+
+    texts      = [d["text"] for d in documents]
+    metadatas  = [
         {
             "kb_source":   d.get("kb_source", name),
             "ticker":      d.get("ticker", ""),
@@ -305,13 +243,26 @@ def _get_or_create_collection(
     ]
     ids        = [str(i) for i in range(len(documents))]
     embeddings = model.encode(texts, convert_to_numpy=True, show_progress_bar=False)
- 
-    collection.upsert(
-        documents=texts,
-        embeddings=embeddings.tolist(),
-        metadatas=metadatas,
-        ids=ids,
-    )
+
+    try:
+        collection.upsert(
+            documents=texts,
+            embeddings=embeddings.tolist(),
+            metadatas=metadatas,
+            ids=ids,
+        )
+    except Exception as e:
+        print(f"  ⚠ Upsert failed for '{name}': {e}")
+        print(f"  🔄 Deleting and recreating collection '{name}'...")
+        client.delete_collection(name)
+        collection = client.get_or_create_collection(name=name)
+        collection.upsert(
+            documents=texts,
+            embeddings=embeddings.tolist(),
+            metadatas=metadatas,
+            ids=ids,
+        )
+
     return collection
  
  
@@ -336,7 +287,7 @@ def _build_collections(
     return collections
 
 # =============================================================================
-# SECTION 4 — HYBRID RETRIEVAL (MULTI-COLLECTION)
+# SECTION 3 — HYBRID RETRIEVAL (MULTI-COLLECTION)
 # =============================================================================
  
 def _hybrid_retrieve_multi(
@@ -438,7 +389,7 @@ def _group_by_source(chunks: list[dict]) -> list[tuple[str, list[dict]]]:
     return list(seen.items())
 
 # =============================================================================
-# SECTION 5 — POST-PROCESSING
+# SECTION 4 — POST-PROCESSING
 # =============================================================================
  
 def _post_process(
@@ -473,104 +424,158 @@ def _post_process(
     return processed
 
 # =============================================================================
-# SECTION 6 — RETRIEVAL EVALUATION
+# SECTION 5 — RETRIEVAL EVALUATION
 # =============================================================================
  
-def _compute_recall_at_k(
-    results:          list[dict],
+def _is_relevant(
+    intent:           str,
+    chunk:            dict,
     relevant_tickers: list[str],
+    expected_sources: set[str],
+) -> bool:
+    """
+    Tiered relevance:
+      - Ticker chunks: must match a resolved ticker (strict)
+      - Macro chunks:  always relevant if macro is an expected source
+      - Concept/strategy chunks: only relevant if no tickers were resolved
+        (i.e. pure concept/strategy query)
+    """
+    source = chunk.get("kb_source", "")
+    
+    # 1. Must belong to expected sources for this intent
+    if source not in expected_sources:
+        return False
+
+    # 2. Intent-specific relevance rules
+    # ─────────────────────────────────────
+
+    # FULL ANALYSIS
+    if intent == "full_analysis":
+        if source == "tickers":
+            return (
+                bool(relevant_tickers) and
+                chunk.get("ticker", "").upper() in {t.upper() for t in relevant_tickers}
+            )
+        if source == "strategies":
+            return True   # supporting info
+        return False      # exclude others
+
+    # CONCEPT EXPLANATION
+    if intent == "concept_explanation":
+        if source == "concepts":
+            return True
+        if source == "strategies":
+            return True   # supporting examples
+        return False
+
+    # TREND PREDICTION
+    if intent == "trend_prediction":
+        if source == "macro":
+            return True
+        if source == "tickers":
+            return (
+                bool(relevant_tickers) and
+                chunk.get("ticker", "").upper() in {t.upper() for t in relevant_tickers}
+            )
+        return False
+
+    # FALLBACK (broad but still controlled)
+    if intent == "fallback":
+        if source == "tickers":
+            return (
+                not relevant_tickers or
+                chunk.get("ticker", "").upper() in {t.upper() for t in relevant_tickers}
+            )
+        return True
+
+    return False
+
+def _compute_recall_at_k( #fixed recall to actual formula
+    intent:           str,
+    results:          list[dict],
+    all_chunks:       list[dict],
+    relevant_tickers: list[str],
+    expected_sources: set[str],
     k:                int,
 ) -> float:
     """
-    Recall@K across both ticker chunks and non-ticker chunks.
- 
-    For ticker intents: measures ticker coverage in top-K.
-    For non-ticker intents (concept, macro): measures KB source coverage.
+    No more ticker and non-ticker intents
+    Recall@k measures relevant in top-k / total relevant in full point
+    Always return a value in [0,1] regardless of intent
     """
-    if not relevant_tickers:
-        # For concept/strategy queries with no specific ticker, measure
-        # whether the correct KB sources appear in top-K
-        return 1.0
+    if not all_chunks:
+        return 0.0
+
+    total_relevant = sum(
+        1 for c in all_chunks
+        if _is_relevant(intent, c, relevant_tickers, expected_sources)
+    ) 
+    if total_relevant == 0:
+        return 0
  
-    top_k_tickers = {
-        r.get("ticker", "").upper()
-        for r in results[:k]
-    }
-    found = len({t.upper() for t in relevant_tickers} & top_k_tickers)
-    return round(found / len(relevant_tickers), 4)
- 
- 
+    relevant_in_top_k = sum(
+        1 for r in results[:k]
+        if _is_relevant(intent, r, relevant_tickers, expected_sources)
+    )
+    return round (relevant_in_top_k / total_relevant, 4)
+
 def _compute_mrr(
+    intent:           str,
     results:          list[dict],
     relevant_tickers: list[str],
+    expected_sources: set[str],
 ) -> float:
-    if not relevant_tickers:
-        return 1.0
-    rrs = []
-    for ticker in relevant_tickers:
-        rr = 0.0
-        for chunk in results:
-            if chunk.get("ticker", "").upper() == ticker.upper():
-                rr = 1.0 / chunk["rank"]
-                break
-        rrs.append(rr)
-    return round(sum(rrs) / len(rrs), 4)
- 
+    """
+    No more ticker and non-ticker intents
+    MRR measures the reciprocal rank of the FIRST relevant chunk
+    """
+    if not results:
+        return 0.0
+
+    for chunk in results:
+        if _is_relevant(intent, chunk, relevant_tickers, expected_sources):
+            return round(1.0 / chunk["rank"], 4)
+
+    return 0.0
  
 def _compute_retrieval_metrics(
     results:          list[dict],
+    all_chunks:       list[dict],
     relevant_tickers: list[str],
     intent:           str,
     k:                int,
 ) -> dict:
-    recall = _compute_recall_at_k(results, relevant_tickers, k)
-    mrr    = _compute_mrr(results, relevant_tickers)
- 
-    # KB source coverage — what fraction of expected sources appear in results
-    expected_sources = set(INTENT_SOURCES.get(intent, []))
-    retrieved_sources = {r.get("kb_source", "") for r in results[:k]}
-    source_coverage  = (
-        round(len(expected_sources & retrieved_sources) / len(expected_sources), 4)
-        if expected_sources else 1.0
-    )
- 
+    expected_sources  = set(INTENT_SOURCES.get(intent, INTENT_SOURCES["fallback"]))
+    retrieved_sources = sorted({r.get("kb_source", "") for r in results[:k]})
+
+    recall = _compute_recall_at_k(intent, results, all_chunks, relevant_tickers, expected_sources, k)
+    mrr    = _compute_mrr(intent, results, relevant_tickers, expected_sources)
+
     flags = []
-    if relevant_tickers and recall < 1.0:
-        missing = {t.upper() for t in relevant_tickers} - {
-            r.get("ticker", "").upper() for r in results[:k]
-        }
-        flags.append(f"RECALL_MISS: {sorted(missing)} not in top-{k}")
-    if relevant_tickers and mrr < 0.5:
-        flags.append(f"LOW_MRR={mrr:.3f}: relevant chunks buried — consider increasing top_k")
-    if source_coverage < 0.75:
-        missing_src = expected_sources - retrieved_sources
-        flags.append(f"LOW_SOURCE_COVERAGE: {missing_src} missing from results")
- 
+    if recall < 0.5:
+        flags.append(f"LOW_RECALL@{k}={recall:.3f}: too many relevant chunks missed in top-{k}")
+    if mrr < 0.5:
+        flags.append(f"LOW_MRR={mrr:.3f}: relevant chunks ranked poorly — consider increasing top_k")
+
     return {
-        f"Recall@{k}":      recall,
+        f"Recall@{k}":       recall,
         "MRR":               mrr,
-        "source_coverage":   source_coverage,
-        "retrieved_sources": sorted(retrieved_sources),
+        "retrieved_sources": retrieved_sources,
         "diagnostic_flags":  flags,
         "justification": {
             "Recall@K": (
-                f"Recall@{k}={recall:.4f}. Recall@{k} measures whether all queried tickers appear "
-                f"in top-{k} results. This value is critical for financial Q&A. Missed ticker = missed facts."
+                f"Recall@{k}={recall:.4f}. Relevant chunks in top-{k} divided by total "
+                f"relevant chunks in the full pool. Expected sources: {sorted(expected_sources)}."
             ),
             "MRR": (
-                f"MRR={mrr:.4f}. MRR measures the rank position of the first relevant chunk. "
-                "Low MRR buries relevant context below noise in the LLM prompt."
-            ),
-            "source_coverage": (
-                f"source_coverage={source_coverage:.4f}. Fraction of expected KB sources "
-                f"({sorted(expected_sources)}) that appear in top-{k} results. "
-                "Low coverage means the intent router is over-relying on one KB."
+                f"MRR={mrr:.4f}. Average reciprocal rank across all relevant chunks in results. "
+                "Low MRR means relevant chunks are consistently ranked low."
             ),
         },
     }
 
 # =============================================================================
-# SECTION 7 — PERSISTENCE
+# SECTION 6 — PERSISTENCE
 # =============================================================================
  
 def _qhash(query: str) -> str:
@@ -598,33 +603,81 @@ def _save_retrieval_log(query, intent, resolved_tickers, raw, filtered, metrics)
     return path
 
 # =============================================================================
+# SECTION 7 — RETRIEVE RESULTS IN PYDANTIC MODEL
+# =============================================================================
+
+from pydantic import BaseModel, Field
+from typing import Optional
+
+# ── Single retrieved chunk ────────────────────────────────────────────────────
+class RetrievedChunk(BaseModel):
+    # Core content
+    text:        str
+    kb_source:   str
+    
+    # Citation fields (enforced in _post_process)
+    citation_id: str  = ""
+    source_url:  str  = ""
+    source_type: str  = ""
+    
+    # Ticker-specific (empty string for macro/concept chunks)
+    ticker:      str  = ""
+    relevant_to: list[str] = Field(default_factory=list)
+    
+    # Retrieval scores (added in _hybrid_retrieve_multi)
+    rank:     int   = 0
+    score:    float = 0.0
+    bm25_raw: float = 0.0
+    vec_sim:  float = 0.0
+
+
+# ── Retrieval metrics ─────────────────────────────────────────────────────────
+class RetrievalMetrics(BaseModel):
+    intent:           str
+    recall_at_k:      float
+    mrr:              float
+    retrieved_sources: list[str]   = Field(default_factory=list)
+    diagnostic_flags:  list[str]   = Field(default_factory=list)
+    justification:     dict[str, str] = Field(default_factory=dict)
+
+
+# ── Full retrieval result (wraps retrieve_context return value) ────────────────
+class RetrievalResult(BaseModel):
+    query:             str
+    intent:            str
+    resolved_tickers:  list[str]          = Field(default_factory=list)
+    chunks:            list[RetrievedChunk]
+    metrics:           RetrievalMetrics
+    log_path:          str                = ""
+
+# =============================================================================
 # SECTION 8 — RETRIEVE_CONTEXT() FUNCTION
 # =============================================================================
  
 def retrieve_context(
+    intent:          str,
     query:           str,
     top_k:           int            = 8,
     force_refresh:   bool           = False,
     score_threshold: float          = RELEVANCE_THRESHOLD,
     save_log:        bool           = True,
-    portfolio_store: PortfolioStore | None = None,
     macro_store:     MacroStore     | None = None,
     concept_store:   ConceptStore   | None = None,
     strategy_store:  StrategyStore  | None = None,
     fred_api_key:    str            | None = None,
-) -> tuple[list[dict], dict, str]:
+) -> RetrievalResult:
     """
-    Retrieval stage: detect intent → collect chunks → embed → retrieve →
+    Retrieval stage: look at which intent → collect chunks → embed → retrieve →
     post-process → evaluate → log.
  
     Parameters
     ----------
+    intent           : Detect intent string (full_analysis, concept_explanation, trend_prediction)
     query            : Natural language question
     top_k            : Chunks to retrieve before filtering
     force_refresh    : Force regeneration of dynamic KB files
     score_threshold  : Minimum fused score to pass filtering
     save_log         : Write retrieval JSON log
-    portfolio_store  : Pre-initialised PortfolioStore (or None to skip kb2)
     macro_store      : Pre-initialised MacroStore (or None to auto-create)
     concept_store    : Pre-initialised ConceptStore (or None to auto-create)
     strategy_store   : Pre-initialised StrategyStore (or None to auto-create)
@@ -634,29 +687,33 @@ def retrieve_context(
     -------
     (filtered_chunks, retrieval_metrics, log_path)
     """
-    # Auto-create lightweight stores if not provided
-    if concept_store is None:
-        concept_store = ConceptStore()
-    if strategy_store is None:
-        strategy_store = StrategyStore()
-    if macro_store is None:
-        macro_store = MacroStore(fred_api_key=fred_api_key)
+    resolved_tickers = [] 
+    
+    # 1. Intent detection (intent needed from LLM)
+    if intent == "full_analysis":
+        resolved_tickers = resolve_tickers_from_query(query)
+        strategy_store   = strategy_store or StrategyStore()
+
+    elif intent == "concept_explanation":
+        concept_store    = concept_store or ConceptStore()
+        strategy_store   = strategy_store or StrategyStore()
+
+    elif intent == "trend_prediction":
+        resolved_tickers = resolve_tickers_from_query(query)
+        macro_store      = macro_store or MacroStore(fred_api_key=fred_api_key)
+    
+    else:
+        resolved_tickers = resolve_tickers_from_query(query)
+        macro_store      = macro_store or MacroStore(fred_api_key=fred_api_key)
+        concept_store    = concept_store or ConceptStore()
+        strategy_store   = strategy_store or StrategyStore()
  
-    # 1. Intent detection
-    intent = detect_intent(query)
-    print(f"\n🎯 Intent detected: {intent.upper()}")
  
-    # 2. Ticker resolution (for kb1 and metric relevance)
-    resolved_tickers = resolve_tickers_from_query(query)
-    if resolved_tickers:
-        print(f"🔍 Resolved tickers: {resolved_tickers}")
- 
-    # 3. Collect chunks from all relevant KB sources
+    # 2. Collect chunks from all relevant KB sources
     print("\n📚 Collecting chunks from KB sources…")
     all_chunks = _collect_all_chunks(
-        intent=intent,
+        intent = intent,
         resolved_tickers=resolved_tickers,
-        portfolio_store=portfolio_store,
         macro_store=macro_store,
         concept_store=concept_store,
         strategy_store=strategy_store,
@@ -665,29 +722,38 @@ def retrieve_context(
  
     if not all_chunks:
         print("  ⚠  No chunks collected — check KB sources")
-        return [], {}, ""
+        return RetrievalResult(
+            query            = query,
+            intent           = intent,
+            resolved_tickers = resolved_tickers,
+            chunks           = [],
+            metrics          = RetrievalMetrics(
+                recall_at_k       = 0.0,
+                mrr               = 0.0,
+            ),
+            log_path         = "",
+        )
  
-    # 4. Embed and build Chroma collections
+    # 3. Embed and build Chroma collections
     model  = SentenceTransformer(EMBED_MODEL_NAME)
     client = chromadb.PersistentClient(path=VECTOR_DB_DIR)
     print("\n🔢 Building vector collections…")
     collections = _build_collections(all_chunks, model, client)
  
-    # 5. Hybrid retrieval
+    # 4. Hybrid retrieval
     print(f"\n🔎 Retrieving top-{top_k} chunks…")
     raw_results = _hybrid_retrieve_multi(
         query, all_chunks, collections, model, top_k=top_k
     )
  
-    # 6. Post-processing
+    # 5. Post-processing
     filtered = _post_process(raw_results, resolved_tickers, score_threshold)
  
-    # 7. Retrieval evaluation
-    metrics = _compute_retrieval_metrics(raw_results, resolved_tickers, intent, k=top_k)
+    # 6. Retrieval evaluation
+    metrics = _compute_retrieval_metrics(raw_results, all_chunks, resolved_tickers, intent, k=top_k)
  
     k_key = f"Recall@{top_k}"
-    print(f"\n📊 {k_key}: {metrics[k_key]:.4f}  MRR: {metrics['MRR']:.4f}  "
-          f"Source coverage: {metrics['source_coverage']:.4f}")
+    print(f"\n📊 {k_key}: {metrics[k_key]:.4f}  MRR: {metrics['MRR']:.4f} ")
     for flag in metrics.get("diagnostic_flags", []):
         print(f"  ⚠  {flag}")
  
@@ -696,52 +762,60 @@ def retrieve_context(
         src = r.get("kb_source", "?")
         print(f"  [{r['rank']}] [{src}] score={r['score']:.3f}  {r['text'][:65]}…")
  
-    # 8. Save log
+    # 7. Save log
     log_path = ""
     if save_log:
         log_path = _save_retrieval_log(
             query, intent, resolved_tickers, raw_results, filtered, metrics
         )
  
-    return filtered, metrics, log_path
+    # 8. Parse into Pydantic models
+    typed_chunks = [RetrievedChunk(**c) for c in filtered]
 
+    typed_metrics = RetrievalMetrics(
+        intent            = intent,            
+        recall_at_k       = metrics[f"Recall@{top_k}"],
+        mrr               = metrics["MRR"],
+        retrieved_sources = metrics["retrieved_sources"],
+        diagnostic_flags  = metrics["diagnostic_flags"],
+        justification     = metrics["justification"],
+    )
+
+    return RetrievalResult(
+        query            = query,
+        intent           = intent,
+        resolved_tickers = resolved_tickers,
+        chunks           = typed_chunks,
+        metrics          = typed_metrics,
+        log_path         = log_path,
+    )
 
 # =============================================================================
 # CLI DEMO
 # =============================================================================
+import json
 if __name__ == "__main__":
     # Set up stores
-    portfolio = PortfolioStore()
-    if not portfolio.holdings:
-        portfolio.set_holdings({
-            "AAPL": {"weight": 0.30, "cost_basis": 150.00},
-            "MSFT": {"weight": 0.25, "cost_basis": 280.00},
-            "NVDA": {"weight": 0.20, "cost_basis": 400.00},
-            "SPY":  {"weight": 0.15, "cost_basis": 420.00},
-            "TLT":  {"weight": 0.10, "cost_basis": 95.00},
-        })
-
-    macro = MacroStore()
+    macro = MacroStore(fred_api_key="06a5067f80033b7cf40e36c48224f59a")
     concepts = ConceptStore()
     strategies = StrategyStore()
 
     # Single query
-    query = "How is AAPL so far, and is it risky?"
-
     print(f"\n{'='*65}")
-    print(f"QUERY: {query}")
+    print("QUERY")
     print("="*65)
 
-    chunks, metrics, log = retrieve_context(
-        query=query,
-        top_k=6,
-        portfolio_store=portfolio,
-        macro_store=macro,
-        concept_store=concepts,
-        strategy_store=strategies,
+    result = retrieve_context(
+        intent         = "trend_prediction",
+        query          = "How is AAPL so far, and is it risky?",
+        top_k          = 10,
+        force_refresh  = False,
+        score_threshold= 0.10,
+        save_log       = True,
+        macro_store    = macro,
+        concept_store  = concepts,
+        strategy_store = strategies,
     )
-
-    # Print evaluation metrics
-    k_key = next(k for k in metrics if k.startswith("Recall@"))
-    print(f"\n{k_key}={metrics[k_key]}  MRR={metrics['MRR']}  "
-          f"Sources={metrics['retrieved_sources']}")
+    
+    # print the full result
+    print(json.dumps(result.dict(), indent=2))

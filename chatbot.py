@@ -6,7 +6,7 @@ import streamlit as st
 from ui.state import initialize_session_state
 from ui.sidebar import render_sidebar
 from ui.chat import render_chat_history
-from agent_tools.workflow_tools.intent_classification import classify_intent
+from agent_tools.workflow_tools import classify_intent, route_and_execute
 
 
 # === Page setup ===
@@ -48,16 +48,23 @@ if user_query:
         message=user_query,
         recent_history=st.session_state.messages,
         portfolio_changed=st.session_state.portfolio_updated,
-        is_first_portfolio=(len(st.session_state.all_portfolios) == 1),
         client=None,
     )
     print(intent)
+
+    workflow = route_and_execute(
+        intent,
+        portfolio=st.session_state.current_portfolio,
+        portfolio_changed=st.session_state.portfolio_updated,
+        recent_history=st.session_state.messages,
+    )
+    response = workflow.content
 
     st.session_state.messages.append({
         "role": "assistant",
         "type": "answer",
         "portfolio_id": st.session_state.current_portfolio["id"],
-        "content": "insert response here" #response
+        "content": response,
     })
 
     # st.session_state.all_assistant_outputs.append(response)
