@@ -1,0 +1,53 @@
+\section{Data and preprocessing}
+\label{sec:data}
+
+This section aligns with \texttt{data\_sourcing\_and\_preprocessing.ipynb}: group tickers, \texttt{Adj Close}, start date, the bounded forward-fill cleaning rule, and exports under \texttt{data/processed/}. In parallel, the deployed app downloads prices via \texttt{yfinance} using the shared helper in the \texttt{agent\_tools} package (fetch from \texttt{2020-01-01}, simple returns on the analytics path). The notebook outputs remain the canonical basis for figures and for any workflow that reads the CSVs directly.
+
+\subsection{Instrument universe and calendar}
+The group’s default panel comprises \textbf{AAPL, MSFT, TSLA, SPY, TLT, GLD}---a mix of single-name equities, a broad U.S.\ equity ETF, long Treasuries, and gold---so correlation structure is non-trivial. Prices are taken from Yahoo Finance via \texttt{yfinance}. The preprocessing notebook pins \texttt{START = "2020-01-01"} and \texttt{END = None} (through ``today'' at run time). The checked-in \texttt{dataset\_meta.json} reports 1567 aligned price rows and 1566 return rows after cleaning; re-running the notebook will update those counts if the calendar advances.
+
+\subsection{Price field and motivation for adjustment}
+All downstream risk statistics operate on \textbf{adjusted} closing levels so that splits and cash dividends do not introduce spurious jumps. Raw \texttt{Close} would bias volatility, drawdown, and correlation estimates. The notebook normalises vendor output to a single date index $\times$ tickers table before exploratory analysis.
+
+\subsection{Exploratory visualisation}
+Before committing to a cleaning rule, the notebook inspects level and return series: drawdown from the running high (stress on crisis periods), rolling annualised volatility (short and long windows), and sample path plots of daily simple returns. Figures~\ref{fig:drawdowns} and~\ref{fig:corr} reproduce two diagnostics from that lineage on the \textbf{current} processed CSVs (\texttt{adj\_close\_prices.csv}, \texttt{simple\_returns.csv}): drawdown curves per ticker and the correlation matrix of cleaned simple returns (the heatmap labelled for export in the notebook).
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.95\textwidth]{data_drawdowns.png}
+    \caption{Drawdown from running high on adjusted closes (processed panel). Same construction as the exploratory block in \texttt{data\_sourcing\_and\_preprocessing.ipynb}.}
+    \label{fig:drawdowns}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=0.72\textwidth]{data_corr_heatmap.png}
+    \caption{Sample correlation matrix of cleaned simple daily returns. Regenerated from \texttt{data/processed/simple\_returns.csv} for inclusion in this report.}
+    \label{fig:corr}
+\end{figure}
+
+\subsection{Cleaning rule and export}
+The following extract matches the preprocessing notebook: forward-fill a \emph{bounded} number of consecutive missing observations, then drop any row that still contains a gap across tickers. Bounded imputation limits silent invention of prices; dropping incomplete rows enforces a common calendar for portfolio sums.
+
+{\small
+\begin{verbatim}
+def clean_prices(prices: pd.DataFrame, ffill_limit: int = 5) -> pd.DataFrame:
+    px = prices.sort_index()
+    px = px.ffill(limit=ffill_limit)
+    px = px.dropna(how="any")
+    return px
+
+prices_clean = clean_prices(raw_prices)
+simple_rets_clean = prices_clean.pct_change().dropna()
+log_rets_clean = np.log(prices_clean).diff().dropna()
+\end{verbatim}
+}
+\begin{center}
+{\footnotesize Source: \texttt{data\_sourcing\_and\_preprocessing.ipynb} (cleaning cell).}
+\end{center}
+
+\noindent
+The notebook writes \texttt{adj\_close\_prices.csv}, \texttt{simple\_returns.csv}, \texttt{log\_returns.csv}, and \texttt{dataset\_meta.json} under \texttt{data/processed/}. Other subsystems (offline quant, RAG tabular hooks, LSTM notebooks) can depend on those paths without re-downloading.
+
+\subsection{Reproducibility}
+Anyone regenerating the figures should (i) run the notebook from the repository root so path constants resolve, (ii) record the execution date in the report or appendix because Yahoo may revise historical adjusted series, and (iii) optionally run \texttt{python report/scripts/make\_data\_figures.py} to rebuild Figure~\ref{fig:drawdowns}--\ref{fig:corr} from the CSVs currently on disk.

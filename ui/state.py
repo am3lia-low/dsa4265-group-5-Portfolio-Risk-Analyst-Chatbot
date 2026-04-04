@@ -19,7 +19,8 @@ def initialize_session_state():
         "all_assistant_outputs": [],
         "last_validation": None,
         "all_intent": [],
-        "all_result": []
+        "all_result": [],
+        "portfolio_updated": False,
     }
 
     for key, value in defaults.items():

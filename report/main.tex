@@ -1,0 +1,103 @@
+\documentclass[12pt]{article}
+
+\usepackage[numbers,sort]{natbib}
+\usepackage{amsfonts, amsmath}
+\usepackage{graphicx}
+% Libertine (optional): \texttt{tlmgr install libertine} — then swap in \texttt{\textbackslash usepackage\{libertine\}}
+\usepackage{lmodern}
+% \usepackage{fullpage} % e.g. tlmgr install preprint — margins are handled by geometry below
+\usepackage{xcolor}
+\usepackage{hyperref}
+% cleveref (optional): tlmgr install cleveref
+\usepackage{float}
+\hypersetup{
+    colorlinks = true,
+    linkcolor = blue,
+    urlcolor  = blue,
+    citecolor = blue,
+    anchorcolor = blue}
+\newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
+\urlstyle{same}
+% caption / subcaption / siunitx: tlmgr install caption subcaption siunitx
+\usepackage{booktabs}
+\graphicspath{{figures/}}
+\usepackage[a4paper,margin=1in]{geometry}
+% setspace / parskip: tlmgr install setspace parskip
+% listings: tlmgr install listings — then restore lstset block from report history if needed
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Document
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Cover / Title page
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{titlepage}
+    \centering
+
+    \vspace*{1.0cm}
+    \includegraphics[width=0.4\textwidth]{nus_logo.jpg}
+
+    \vspace{1.0cm}
+
+    {\LARGE \textbf{Portfolio Risk Analyst Chatbot: \\[0.3cm]
+    Quantitative Metrics, Retrieval-Augmented Guidance, \\[0.3cm]
+    and Conversational Orchestration} \par}
+
+    \vspace{1cm}
+
+    {\large DSA4265 — Group 5 \par}
+    \vspace{0.3cm}
+    {\large \today \par}
+
+    \vspace{1.0cm}
+
+    \renewcommand{\arraystretch}{1.5}
+    \begin{tabular}{|p{4.5cm}|p{3.5cm}|p{5cm}|}
+        \hline
+        \textbf{Name} & \textbf{Matric Number} & \textbf{Email} \\ \hline
+        Liu Jingyan & A0258209Y & e0969181@u.nus.edu \\ \hline
+        % Add your name and matric number here !
+    \end{tabular}
+
+    \vspace{0.5cm}
+
+    \begin{minipage}{0.9\textwidth}
+\small
+\begin{center}
+\textbf{Abstract}
+\end{center}
+
+Risk indicators shown in consumer applications are frequently opaque with respect to the portfolio weights to which they pertain, whilst unconstrained dialogue with large language models can yield numerically specific yet unsubstantiated statements drawn from parametric memory. This report describes a Streamlit-based conversational system that mitigates these issues by coupling user-supplied holdings to a reproducible analytics pipeline. Validated ticker--weight pairs drive a single download of split- and dividend-adjusted closing prices via Yahoo Finance (\texttt{yfinance}); consistent simple-return series underpin annualised volatility, a historical one-day loss quantile used as a VaR-style descriptor, maximum drawdown, a Sharpe-style ratio with the risk-free rate fixed at zero, mean pairwise correlation, and a Herfindahl concentration measure. User utterances are classified with Google Gemini into task types (holistic review, named statistics, definitional queries, and related categories); a deterministic orchestration layer then invokes quantitative computation, hybrid retrieval over local knowledge corpora (BM25 plus dense vectors in Chroma), or both, and formats the user-visible reply as Markdown without a separate generative rewriting stage in the reference interface. The architecture modularises analytics and retrieval to admit further risk measures or forecasting components; findings are contingent on vendor data quality and reporting delay, and the software is offered for research and pedagogical use only, not as regulated investment advice.
+
+\end{minipage}
+
+    \vfill
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Main body (outline — expand in \texttt{sections/})
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\input{sections/introduction}
+
+\input{sections/data}
+
+\input{sections/methodology}
+
+\input{sections/system}
+
+\input{sections/evaluation}
+
+\input{sections/discussion}
+
+\input{sections/conclusion}
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\end{document}
