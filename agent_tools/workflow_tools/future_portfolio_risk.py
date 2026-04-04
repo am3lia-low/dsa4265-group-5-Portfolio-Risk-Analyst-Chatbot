@@ -37,6 +37,22 @@ from data_tools.calculate_returns import calculate_returns
 # Initialize the model
 # LSTM
 class LSTMModel(nn.Module):
+    """
+    LSTM for portfolio time series forecasting.
+
+    This model processes sequential financial return data and produces:
+    1. A regression output predicting future volatility.
+    2. A binary classification output predicting market direction (up/down).
+
+    Inputs:
+        x (torch.Tensor): Shape (batch_size, seq_len, input_size)
+
+    Returns:
+        Tuple[torch.Tensor, torch.Tensor]:
+            - vol_output: Predicted volatility (batch_size, 1)
+            - dir_output: Predicted probability of upward movement (batch_size, 1)
+
+    """
     def __init__(self, input_size, hidden_size1=64, hidden_size2=32):
         super(LSTMModel, self).__init__()
 
@@ -73,6 +89,7 @@ class LSTMModel(nn.Module):
     
 
 class PortfolioDataset(Dataset):
+    
     def __init__(self, X, y_vol, y_dir):
         self.X = X
         self.y_vol = y_vol
@@ -89,6 +106,28 @@ model = LSTMModel(input_size=1)
 threshold = 0.5
 
 def portfolio_to_lstm_input(portfolio, window=60):
+        """
+        Convert a portfolio definition into LSTM-ready input tensor(s).
+
+        This function:
+            1. Normalizes portfolio weights.
+            2. Fetches historical price data for given tickers.
+            3. Computes log returns.
+            4. Extracts the most recent time window.
+            5. Normalizes the window for model input.
+
+        Args:
+            portfolio (dict):
+                Dictionary containing:
+                    - "tickers" (list[str]): List of asset tickers
+                    - "weights" (list[float]): Corresponding portfolio weights
+            window (int, optional): Number of timesteps to include. Default is 60.
+
+        Returns:
+            List[np.ndarray]:
+                A list containing one LSTM input array of shape (1, window, 1)
+
+        """
         X_inputs = []
         tickers = portfolio["tickers"]
         weights = np.array(portfolio["weights"], dtype=float)
@@ -127,6 +166,34 @@ def portfolio_to_lstm_input(portfolio, window=60):
     
 
 def future_portfolio_risk(X_input):
+    """
+    Predict future portfolio volatility and direction using a trained LSTM model.
+
+    This function:
+        1. Ensures input is a torch tensor.
+        2. Loads pretrained model weights.
+        3. Runs inference in evaluation mode.
+        4. Computes:
+            - Volatility prediction (regression)
+            - Direction prediction (binary classification)
+            - Probability of upward movement
+            - Confidence score
+
+    Args:
+        X_input (np.ndarray or torch.Tensor):
+            Input tensor of shape (batch_size, seq_len, input_size)
+
+    Returns:
+        dict:
+            {
+                "predicted_volatility": torch.Tensor,
+                "predicted_direction": List[str],   # ["Up", "Down"]
+                "confidence": torch.Tensor,         # range [0, 1]
+                "prob_up": torch.Tensor             # probability of upward movement
+            }
+
+
+    """
     all_preds = []
     all_targets = []
     all_probs = []
@@ -163,4 +230,3 @@ def future_portfolio_risk(X_input):
         "prob_up": prob_up
     }
 
-dict_r = future_portfolio_risk(X_test)
