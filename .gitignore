@@ -8,10 +8,9 @@
 anaconda_projects/
 __pycache__/
 .ipynb_checkpoints/
-RAG/.ipynb_checkpoints/__pycache__/
-RAG/.ipynb_checkpoints/
-RAG/.virtual_documents/
-RAG/vector_db/
-RAG/knowledge_base/
-RAG/retrieval_log/
-RAG/outputs/
+agent_tools/rag_tools/.ipynb_checkpoints/__pycache__/
+agent_tools/rag_tools/.ipynb_checkpoints/
+agent_tools/rag_tools/.virtual_documents/
+agent_tools/rag_tools/vector_db/
+agent_tools/rag_tools/knowledge_base/
+agent_tools/rag_tools/retrieval_log/

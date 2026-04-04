@@ -52,28 +52,30 @@ warnings.filterwarnings("ignore")
 
 # ── Retrieve FRED_API_KEY ──────────────────────────────────────────────────────────
 # Automatically find the .env in the main folder
-BASE_DIR = Path(__file__).resolve().parent.parent # Go up from RAG/ to main folder
-ENV_PATH = BASE_DIR / ".env"
+# update: no need to fetch freddie. it has been fetched in kb2_macro_regime.py
 
-if ENV_PATH.exists():
-    load_dotenv(dotenv_path=ENV_PATH)
-    print(f"Loaded .env from {ENV_PATH}")
-else:
-    print("⚠ .env file not found in the main folder")
+# BASE_DIR = Path(__file__).resolve().parent.parent.parent # Go up from RAG/ to main folder
+# ENV_PATH = BASE_DIR / ".env"
+
+# if ENV_PATH.exists():
+#     load_dotenv(dotenv_path=ENV_PATH)
+#     print(f"fetching freddie🐊 from env:{ENV_PATH}")
+# else:
+#     print("⚠ .env file not found for RAG_utils")
 
 # Access env variable:
 FRED_API_KEY = os.getenv("FRED_API_KEY")
  
 # ── Local KB modules ──────────────────────────────────────────────────────────
-import kb0_ticker_resolver
-import kb1_generate_tickers
-import kb2_macro_regime
-import kb3_concepts
-import kb4_strategies
- 
-for _mod in [kb0_ticker_resolver, kb1_generate_tickers,
-             kb2_macro_regime, kb3_concepts, kb4_strategies]:
-    importlib.reload(_mod)
+# from . import kb0_ticker_resolver
+# from . import kb1_generate_tickers
+# from . import kb2_macro_regime
+# from . import kb3_concepts
+# from . import kb4_strategies
+
+# for _mod in [kb0_ticker_resolver, kb1_generate_tickers,
+#              kb2_macro_regime, kb3_concepts, kb4_strategies]:
+#     importlib.reload(_mod)
  
 from kb0_ticker_resolver import resolve_tickers_from_query
 from kb1_generate_tickers import (
@@ -87,11 +89,11 @@ from kb3_concepts  import ConceptStore
 from kb4_strategies import StrategyStore
 
 # ── Config ────────────────────────────────────────────────────────────────────
-VECTOR_DB_DIR       = "vector_db"
+VECTOR_DB_DIR       = "agent_tools/rag_tools/vector_db"
 EMBED_MODEL_NAME    = "sentence-transformers/all-MiniLM-L6-v2"
 KB_STALENESS_HOURS  = 24
 RELEVANCE_THRESHOLD = 0.10    # lower than before — static KB chunks score differently
-RETRIEVAL_LOG_DIR   = "retrieval_log"
+RETRIEVAL_LOG_DIR   = "agent_tools/rag_tools/retrieval_log"
  
 # ── Intent → KB source mapping ────────────────────────────────────────────────
 # Each intent specifies which Chroma collections to query

@@ -20,8 +20,8 @@ import warnings
 warnings.filterwarnings("ignore", message="Converting to PeriodArray/Index representation")
 
 # ── Default hardcoded 20 tickers (unchanged) ─────────────────────────────────
-OUTPUT_DIR_HTML = "knowledge_base/kb1_tickers/html"
-OUTPUT_DIR_JSON = "knowledge_base/kb1_tickers/json"
+OUTPUT_DIR_HTML = "agent_tools/rag_tools/knowledge_base/kb1_tickers/html"
+OUTPUT_DIR_JSON = "agent_tools/rag_tools/knowledge_base/kb1_tickers/json"
 
 DEFAULT_TICKERS = {
     "AAPL":  {"name": "Apple Inc.",                         "type": "equity"},
@@ -55,7 +55,7 @@ SECTIONS = [
     "Earnings & Analyst Coverage",
 ]
 
-OUTPUT_TXT = "output/kb1_tickers_processed.txt"
+OUTPUT_TXT = r"agent_tools/rag_tools/output/kb1_tickers_processed.txt"
 
 # ── Type detection ────────────────────────────────────────────────────────────
 

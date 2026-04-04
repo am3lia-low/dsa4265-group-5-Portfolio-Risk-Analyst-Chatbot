@@ -5,12 +5,12 @@ Static curated concept definitions — Intent 4 (Concept Explanation).
  
 Output
 ------
-  knowledge_base/concepts/concepts.json   — persisted concept dict
+  agent_tools/rag_tools/knowledge_base/concepts/concepts.json   — persisted concept dict
   kb3_concepts.txt                        — human-readable audit
  
 Folder
 ------
-  knowledge_base/concepts/
+  agent_tools/rag_tools/knowledge_base/concepts/
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ import datetime
 
 CONCEPTS_DIR  = "knowledge_base/kb3_concepts"
 CONCEPTS_FILE = os.path.join(CONCEPTS_DIR, "concepts.json")
-OUTPUT_TXT = "output/kb3_concepts.txt"
+OUTPUT_TXT = r"agent_tools/rag_tools/output/kb3_concepts.txt"
 
 os.makedirs(CONCEPTS_DIR, exist_ok=True)
 

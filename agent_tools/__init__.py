@@ -9,7 +9,7 @@ from .data_tools import (
 )
 
 # RAG: Retrieve_context()
-from ..RAG.RAG_utils import retrieve_context  # Added: Import retrieve_context 
+from agent_tools.rag_tools.RAG_utils import retrieve_context  # Added: Import retrieve_context 
 
 # ML risk tools
 from .ml_risk_tools import (
@@ -21,7 +21,9 @@ from .ml_risk_tools import (
 from .workflow_tools import (
     classify_intent,
     Intent,
-    IntentResult
+    IntentResult,
+    route_and_execute,
+    WorkflowResult
 )
 
 # Export everything
@@ -35,7 +37,9 @@ __all__ = [
     "IntentResult",
     "retrieve_context",
     "current_portfolio_risk_tool",
-    "future_portfolio_risk"
+    "future_portfolio_risk",
+    "route_and_execute",
+    "WorkflowResult"
 ]
 
 # Only export workflow tools if they're available

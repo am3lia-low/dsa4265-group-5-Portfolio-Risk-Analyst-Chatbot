@@ -31,8 +31,8 @@ import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
 import datetime
-from data_tools.fetch_price_data import fetch_price_data
-from data_tools.calculate_returns import calculate_returns
+from agent_tools import fetch_price_data
+from agent_tools import calculate_returns
 
 # Initialize the model
 # LSTM

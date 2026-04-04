@@ -5,12 +5,12 @@ Strategy & rebalancing framework knowledge base — Intent 2 (Rebalance justific
 
 Output
 ------
-  knowledge_base/strategies/strategies.json   — persisted strategy dict
+  agent_tools/rag_tools/knowledge_base/strategies/strategies.json   — persisted strategy dict
   kb4_strategies.txt                          — human-readable audit
  
 Folder
 ------
-  knowledge_base/strategies/
+  agent_tools/rag_tools/knowledge_base/strategies/
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ import datetime
 
 STRATEGIES_DIR  = "knowledge_base/kb4_strategies"
 STRATEGIES_FILE = os.path.join(STRATEGIES_DIR, "strategies.json")
-OUTPUT_TXT      = "output/kb4_strategies.txt"
+OUTPUT_TXT      = r"agent_tools/rag_tools/output/kb4_strategies.txt"
 
 os.makedirs(STRATEGIES_DIR, exist_ok=True)
 

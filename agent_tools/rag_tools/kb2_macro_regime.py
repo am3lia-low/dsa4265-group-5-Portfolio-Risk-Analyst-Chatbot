@@ -6,17 +6,16 @@ Macro & market regime data: FRED + yfinance sector ETFs + VIX.
 Input (run on terminal)
 ------
 export FRED_API_KEY="API_KEY_ENTER_HERE"
-export FRED_API_KEY="a8e1d8754aa94cb4fd2bb11dace89f4b"
 python kb2_macro_regime.py
 
 Output
 ------
-  knowledge_base/macro/macro_cache.json   — cached raw data (refreshed every 6h)
+  agent_tools/rag_tools/knowledge_base/macro/macro_cache.json   — cached raw data (refreshed every 6h)
   kb2_macro_regime.txt                    — human-readable audit of all chunks
  
 Folder
 ------
-  knowledge_base/macro/
+  agent_tools/rag_tools/knowledge_base/macro/
 """
 
 from __future__ import annotations
@@ -31,11 +30,26 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 
+# fetching freddie 🐊
+from pathlib import Path
+from dotenv import load_dotenv
+BASE_DIR = Path(__file__).resolve().parent.parent.parent # Go up from RAG/ to main folder
+ENV_PATH = BASE_DIR / ".env"
+
+if ENV_PATH.exists():
+    load_dotenv(dotenv_path=ENV_PATH)
+    print(f"fetching freddie🐊 from env:{ENV_PATH}")
+else:
+    print("⚠ .env file not found for RAG kb2")
+
+# Access env variable:
+FRED_API_KEY = os.getenv("FRED_API_KEY")
+
 warnings.filterwarnings("ignore")
 
-MACRO_DIR       = "knowledge_base/kb2_macro"
+MACRO_DIR       = "agent_tools/rag_tools/knowledge_base/kb2_macro"
 MACRO_CACHE     = os.path.join(MACRO_DIR, "macro_cache.json")
-OUTPUT_TXT      = "output/kb2_macro_regime.txt"
+OUTPUT_TXT = r"agent_tools/rag_tools/output/kb2_macro_regime.txt"
 STALENESS_HOURS = 6           # macro data refreshes every 6 hours
 
 os.makedirs(MACRO_DIR, exist_ok=True)
@@ -198,7 +212,7 @@ class MacroStore:
     """
 
     def __init__(self, fred_api_key: str | None = None):
-        self.fred_api_key = fred_api_key or os.getenv("FRED_API_KEY")
+        self.fred_api_key = FRED_API_KEY
         self._data:   dict       = {}
         self._chunks: list[dict] = []
         if os.path.exists(MACRO_CACHE):
