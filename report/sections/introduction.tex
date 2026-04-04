@@ -1,0 +1,26 @@
+\section{Introduction}
+\label{sec:introduction}
+
+\subsection{Motivation and problem statement}
+Portfolio risk is inherently multidimensional: volatility, tail behaviour, co-movement among holdings, and weight concentration capture distinct facets of exposure, and user information needs vary accordingly. At the same time, interactive assistants based on large language models (LLMs) do not, by default, observe an end-user's asset allocation; numerical summaries produced without an explicit data channel therefore cannot be guaranteed to correspond to any stated portfolio.
+
+A second concern is \emph{provenance}. Even high-quality natural-language explanations of financial concepts may be difficult to audit when they are generated solely from model weights rather than from retrievable evidence aligned to the question and, where relevant, to the user's positions.
+
+\subsection{Objectives and scope}
+The objective of the present work is a conversational interface through which, subject to prior validation of the portfolio specification, a user may obtain (i) an aggregated risk summary, (ii) values for implemented scalar risk statistics, (iii) definitional or contextual material on finance terminology, and (iv) short follow-up clarification anchored in the preceding system response. ``What-if'' and rebalancing-oriented questions are treated within the same analytical family as broad risk-review requests; the implementation records whether the allocation has changed relative to earlier session state.
+
+The scope is instructional and prototypical. Live order execution, personalised advice governed by securities regulation, tax treatment, and production-grade risk reporting are excluded. Prices are taken as end-of-day vendor quotes adequate for coursework and proof-of-concept use, not as tick-level or certified reference data.
+
+\subsection{Contributions}
+The work is primarily engineering-centred; its contributions are architectural and empirical rather than theoretical:
+\begin{itemize}
+    \item A Streamlit application with structured portfolio capture, validation logic for tickers and weights, and persistent chat transcriptions in session state.
+    \item A unified data-access layer for adjusted closing prices, optionally augmented with a broad equity market proxy (SPY) on a common trading calendar, together with centralised return construction (simple or logarithmic) to prevent inconsistent preprocessing between analytical and prospective machine-learning components.
+    \item A baseline quantitative module operating on historical daily returns, yielding annualised volatility, a historical one-day quantile usable as a rudimentary value-at-risk figure, a zero risk-free Sharpe-style ratio, maximum drawdown on the cumulative return path, average pairwise correlation among constituents, and a Herfindahl index of weights; these inputs map to a rule-based composite score and categorical risk band for narrative presentation.
+    \item Structured intent inference (Google Gemini) coupled to explicit routing code that invokes the metric pipeline, attaches optional retrieval results, or surfaces recent assistant output for follow-up turns.
+    \item A retrieval-augmented generation (RAG) subsystem comprising multiple curated corpora (including conceptual and strategy-oriented material), intent-conditioned source selection, hybrid lexical and dense-vector retrieval in Chroma, and instrumentation suitable for offline evaluation metrics such as recall at fixed cut-offs.
+\end{itemize}
+Systematic human-factor evaluation and full ablation studies are deferred to \autoref{sec:evaluation}; the exposition below foregrounds design rationale and implementation fidelity.
+
+\subsection{Report structure}
+\autoref{sec:data} specifies data provenance and preprocessing. \autoref{sec:methodology} formalises notation, summarises the implemented risk statistics, and outlines RAG and conversational control flow. Subsequent sections treat system realisation (\autoref{sec:system}), evaluation plans (\autoref{sec:evaluation}), limitations and responsible use (\autoref{sec:discussion}), and concluding remarks (\autoref{sec:conclusion}).
