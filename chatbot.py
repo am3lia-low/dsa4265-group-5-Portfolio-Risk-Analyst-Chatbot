@@ -3,9 +3,9 @@ import streamlit as st
 # =========================
 # Imports from modules
 # =========================
-from ui.state import initialize_session_state
+from ui.state import initialize_session_state, update_cache
 from ui.sidebar import render_sidebar
-from ui.chat import render_chat_history
+from ui.chat import render_chat_history, render_status
 from agent_tools.workflow_tools import classify_intent, route_and_execute
 
 
@@ -19,9 +19,10 @@ st.caption("Conversational portfolio analysis with validation, metrics, and expl
 # === Initialise session state ===
 initialize_session_state()
 
-# === Render sidebar ===
+# === Render sidebar & chat messages ===
 render_sidebar()
-render_chat_history(st.session_state.messages)
+render_status(st.session_state.portfolio_messages)
+render_chat_history(st.session_state.chat_history)
 
 # === Chatbox ===
 user_query = st.chat_input(
@@ -31,22 +32,14 @@ user_query = st.chat_input(
 
 if user_query:
     # show user message
-    st.session_state.messages.append({
+    st.session_state.chat_history.append({
         "role": "user",
-        "type": "question",
-        "portfolio_id": st.session_state.current_portfolio["id"],
         "content": user_query
     })
 
-    st.session_state.all_user_inputs.append(user_query)
-    print("INPUTS:")
-    print(st.session_state.all_user_inputs)
-    print(st.session_state.current_portfolio)
-    print(st.session_state.messages)
-
     intent = classify_intent(
         message=user_query,
-        recent_history=st.session_state.messages,
+        recent_history=st.session_state.chat_history,
         portfolio_changed=st.session_state.portfolio_updated,
         client=None,
     )
@@ -56,21 +49,21 @@ if user_query:
         intent,
         portfolio=st.session_state.current_portfolio,
         portfolio_changed=st.session_state.portfolio_updated,
-        recent_history=st.session_state.messages,
+        recent_history=st.session_state.chat_history,
     )
     response = workflow.content
 
-    st.session_state.messages.append({
+    st.session_state.chat_history.append({
         "role": "assistant",
-        "type": "answer",
-        "portfolio_id": st.session_state.current_portfolio["id"],
         "content": response,
+        "metadata": {
+            "intent": "intent",
+            "tools_used": ["tool1"],        # to be updated
+            "models_called": ["model1"]     # to be updated
+        }
     })
 
-    # st.session_state.all_assistant_outputs.append(response)
+    update_cache()  # to be updated
     st.session_state.portfolio_updated = False
-
-    print(st.session_state.messages)
-    print(st.session_state.all_portfolios)
 
     st.rerun()
