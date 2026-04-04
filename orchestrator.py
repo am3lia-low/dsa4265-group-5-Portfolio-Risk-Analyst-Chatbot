@@ -6,8 +6,12 @@ import logging
 from dataclasses import dataclass
 from typing import Any, Optional
 
-from .intent_classifier import Intent, IntentResult
-from .current_portfolio_risk_tool import current_portfolio_risk_tool
+import sys
+import os
+
+
+from agent_tools.workflow_tools.intent_classifier import classify_intent, Intent, IntentResult
+from agent_tools.ml_risk_tools import current_portfolio_risk_tool
 
 logger = logging.getLogger(__name__)
 
