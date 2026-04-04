@@ -1,6 +1,6 @@
 import streamlit as st
 from collections import defaultdict
-from ui.state import update_status_message
+from ui.state import update_status_message, clear_cache, snapshot_portfolio
 from agent_tools.data_tools.valid_tickers import valid_tickers
 from agent_tools.data_tools.valid_weights import valid_weights
 
@@ -40,17 +40,6 @@ def render_sidebar():
     except ValueError:
         st.sidebar.error("Please enter a valid number")
         investment_amount = 0.0
-
-    currency_options = ["USD", "SGD", "EUR", "GBP", "JPY"]
-    current_currency = st.session_state.portfolio["currency"]
-    currency_index = currency_options.index(current_currency) if current_currency in currency_options else 0
-
-    currency = st.sidebar.selectbox(
-        "Currency",
-        currency_options,
-        index=currency_index,
-        disabled=st.session_state.portfolio_ready,
-    )
 
     st.sidebar.subheader("Holdings")
 
@@ -98,13 +87,14 @@ def render_sidebar():
         ticker = holding["ticker"]
         weight = holding["weight"]
 
-        if ticker:   # ignore blank tickers
+        if ticker:
             combined[ticker] += weight
 
     portfolio = [
         {"ticker": ticker, "weight": weight}
         for ticker, weight in combined.items()
     ]
+    portfolio = sorted(portfolio, key=lambda x: x["weight"], reverse=True)
 
     colA, colB = st.sidebar.columns(2)
 
@@ -126,47 +116,28 @@ def render_sidebar():
 
     analyze_clicked = st.sidebar.button("Analyze Portfolio")
 
-    # sync current sidebar inputs into session_state
-    st.session_state.portfolio["investment_amount"] = investment_amount
-    st.session_state.portfolio["currency"] = currency
-    st.session_state.portfolio["tickers"] = [holding["ticker"] for holding in portfolio]
-    st.session_state.portfolio["weights"] = [holding["weight"] for holding in portfolio]
+
+    proposed_portfolio = {
+        "tickers": [holding["ticker"] for holding in portfolio],
+        "weights": [(holding["weight"] / 100) for holding in portfolio],
+        "investment_amount": investment_amount
+    }
 
     if analyze_clicked:
-
         is_valid, msg = portfolio_checker(portfolio, investment_amount)
+
         if is_valid:
             st.session_state.portfolio_ready = True
-            st.session_state.last_validation = 1
 
-            new_snapshot = {
-                "tickers": st.session_state.portfolio["tickers"][:],
-                "weights": st.session_state.portfolio["weights"][:],
-                "investment_amount": st.session_state.portfolio["investment_amount"],
-                "currency": st.session_state.portfolio["currency"],
-            }
-
-            if st.session_state.current_portfolio is None:
-                # first valid portfolio
-                new_snapshot["id"] = st.session_state.portfolio_version
-                st.session_state.current_portfolio = new_snapshot
-                st.session_state.all_portfolios.append(new_snapshot)
-                st.session_state.portfolio["id"] = new_snapshot["id"]
-                st.session_state.portfolio_version += 1
-                st.session_state.portfolio_updated = True
-
-            elif portfolios_are_equal(new_snapshot, st.session_state.current_portfolio):
-                # no real change
-                st.session_state.portfolio["id"] = st.session_state.current_portfolio["id"]
+            if portfolios_are_equal(proposed_portfolio, st.session_state.portfolio):
                 st.session_state.portfolio_updated = False
-
             else:
-                # real change -> new version
-                new_snapshot["id"] = st.session_state.portfolio_version
-                st.session_state.current_portfolio = new_snapshot
-                st.session_state.all_portfolios.append(new_snapshot)
-                st.session_state.portfolio["id"] = new_snapshot["id"]
-                st.session_state.portfolio_version += 1
+                if st.session_state.portfolio["tickers"] and st.session_state.cache["metrics"] is not None:
+                    snapshot_portfolio()
+                    
+                clear_cache()
+                st.session_state.portfolio = proposed_portfolio
+                st.session_state.all_portfolios.append(proposed_portfolio.copy())
                 st.session_state.portfolio_updated = True
 
             update_status_message()
@@ -175,11 +146,11 @@ def render_sidebar():
         else:
             st.sidebar.error(msg)
             st.session_state.portfolio_ready = False
-            st.session_state.last_validation = 0
             st.session_state.portfolio_updated = False
             update_status_message()
 
-    return portfolio, investment_amount, currency
+        return portfolio, investment_amount
+
 
 
 def portfolio_checker(portfolio, investment_amount):
@@ -216,5 +187,4 @@ def portfolios_are_equal(p1, p2):
         p1["tickers"] == p2["tickers"]
         and p1["weights"] == p2["weights"]
         and p1["investment_amount"] == p2["investment_amount"]
-        and p1["currency"] == p2["currency"]
     )
