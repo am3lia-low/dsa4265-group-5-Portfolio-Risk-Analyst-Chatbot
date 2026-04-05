@@ -153,7 +153,7 @@ def calculate_cvar(returns: pd.DataFrame, weights: list, conf: float = 0.95) -> 
 
 
 # 6. MAXIMUM DRAWDOWN (MDD)
-def calculate_mdd(prices: pd.DataFrame, weights: list) -> float:
+def calculate_mdd(returns: pd.DataFrame, weights: list) -> float:
     """
     Compute the maximum peak-to-trough decline in portfolio value.
     Most emotionally impactful metric for users — worst-case loss ever.
@@ -171,9 +171,10 @@ def calculate_mdd(prices: pd.DataFrame, weights: list) -> float:
         Maximum drawdown as a negative decimal (e.g. -0.40 = 40% drop).
     """
     w = np.array(weights)
-    port_value = (prices * w).sum(axis=1)
-    rolling_max = port_value.cummax()
-    drawdown = (port_value - rolling_max) / rolling_max
+    port_returns = (returns * w).sum(axis=1)
+    wealth = (1 + port_returns).cumprod()
+    rolling_max = wealth.cummax()
+    drawdown = (wealth - rolling_max) / rolling_max
     return float(drawdown.min())
 
 
@@ -356,6 +357,8 @@ def calculate_avg_pairwise_correlation(cov_matrix: pd.DataFrame) -> float:
     outer = np.outer(std, std)
     corr_matrix = cov_matrix.values / outer
     n = corr_matrix.shape[0]
+    if n < 2:
+        return 0.0  # single asset — no pairs to correlate
     # Extract upper triangle excluding diagonal
     upper = corr_matrix[np.triu_indices(n, k=1)]
     return float(upper.mean())
