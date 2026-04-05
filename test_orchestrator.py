@@ -11,7 +11,7 @@ from unittest.mock import patch, MagicMock
 import pytest
 
 # Add the project root to the Python path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__))))
+# sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__))))
 
 from agent_tools import route_and_execute, WorkflowResult
 from agent_tools import Intent, IntentResult
@@ -104,7 +104,7 @@ def test_concept_explanation_workflow_with_rag():
         MagicMock(text="Higher Sharpe ratios indicate better risk-adjusted performance.", kb_source="finance_book")
     ]
 
-    with patch('agent_tools.rag_tools.RAG_utils.retrieve_context', return_value=mock_rag_response):
+    with patch('agent_tools.retrieve_context', return_value=mock_rag_response):
         result = route_and_execute(intent_result, MOCK_PORTFOLIO)
 
         assert isinstance(result, WorkflowResult)
@@ -311,10 +311,10 @@ if __name__ == "__main__":
     for test_func in test_functions:
         try:
             test_func()
-            print(f"✓ {test_func.__name__}")
+            print(f"PASS: {test_func.__name__}")
             passed += 1
         except Exception as e:
-            print(f"✗ {test_func.__name__}: {e}")
+            print(f"FAIL: {test_func.__name__}: {e}")
             failed += 1
 
     print(f"\nTest Results: {passed} passed, {failed} failed")

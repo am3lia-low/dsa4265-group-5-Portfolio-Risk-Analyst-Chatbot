@@ -30,7 +30,7 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 
-# fetching freddie 🐊
+# fetching freddie
 from pathlib import Path
 from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent.parent # Go up from RAG/ to main folder
@@ -38,7 +38,7 @@ ENV_PATH = BASE_DIR / ".env"
 
 if ENV_PATH.exists():
     load_dotenv(dotenv_path=ENV_PATH)
-    print(f"fetching freddie🐊 from env:{ENV_PATH}")
+    print(f"fetching freddie from env:{ENV_PATH}")
 else:
     print("⚠ .env file not found for RAG kb2")
 
