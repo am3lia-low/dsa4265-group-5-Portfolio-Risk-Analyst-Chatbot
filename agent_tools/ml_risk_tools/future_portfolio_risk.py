@@ -83,7 +83,7 @@ class LSTMModel(nn.Module):
         out = self.dropout2(out)
 
         vol_output = self.volatility_head(out)
-        dir_output = self.sigmoid(self.direction_head(out))
+        dir_output = torch.sigmoid(self.direction_head(out))
 
         return vol_output, dir_output
     
@@ -135,8 +135,8 @@ def portfolio_to_lstm_input(portfolio, window=60):
         # Normalize weights (handles % like 50,30,20)
         weights = weights / weights.sum()
 
-        # Convert to dict format if needed elsewhere
-        tickers_weights = dict(zip(tickers, weights))
+        # Convert to dict format if needed elsewhere; RE: no need for now bah!
+        # tickers_weights = dict(zip(tickers, weights))
 
         # Fetch + compute
         prices = fetch_price_data(
@@ -165,7 +165,7 @@ def portfolio_to_lstm_input(portfolio, window=60):
 
     
 
-def future_portfolio_risk(X_input):
+def future_portfolio_risk(portfolio, window=60):
     """
     Predict future portfolio volatility and direction using a trained LSTM model.
 
@@ -186,20 +186,24 @@ def future_portfolio_risk(X_input):
     Returns:
         dict:
             {
-                "predicted_volatility": torch.Tensor,
-                "predicted_direction": List[str],   # ["Up", "Down"]
-                "confidence": torch.Tensor,         # range [0, 1]
-                "prob_up": torch.Tensor             # probability of upward movement
+                "predicted_volatility": float,
+                "predicted_direction": str,    # "Up" or "Down"
+                "confidence": float,           # range [0, 1]
+                "prob_up": float               # probability of upward movement
             }
 
 
     """
+
+    # i put portfolio_to_lstm_input here instead so i can just export future_portfolio_risk
+    X_input = portfolio_to_lstm_input(portfolio, window=60)
+
     all_preds = []
     all_targets = []
     all_probs = []
     # Ensure input is tensor
     if not torch.is_tensor(X_input):
-        X_input = torch.tensor(X_input, dtype=torch.float32)
+        X_input = torch.tensor(X_input[0], dtype=torch.float32)  # unwrap list → (1, window, 1)
         
     # Load the saved state_dict
     model.load_state_dict(torch.load('../LSTM/model_weights.pth'))
@@ -218,15 +222,15 @@ def future_portfolio_risk(X_input):
         preds = (prob_up > threshold).float()
 
         print(preds)
-        direction = ["Up" if p==1.0 else "Down" for p in preds.view(-1).tolist()]
+        direction = "Up" if preds.item() == 1.0 else "Down"
 
     # Confidence = probability distance from 0.5
-    confidence = abs(prob_up - 0.5) * 2   # scaled to [0,1]
+    confidence = float((abs(prob_up - 0.5) * 2).item())   # scaled to [0,1]
 
     return {
-        "predicted_volatility": vol_pred,
+        "predicted_volatility": float(vol_pred.item()),
         "predicted_direction": direction,
         "confidence": confidence,
-        "prob_up": prob_up
+        "prob_up": float(prob_up.item())
     }
 

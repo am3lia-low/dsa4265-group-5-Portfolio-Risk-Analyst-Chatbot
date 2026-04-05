@@ -78,8 +78,7 @@ def update_cache(
 ):
     st.session_state.cache = {
         "portfolio_hash": compute_portfolio_hash(),
-        "price_data": price_data,
-        "returns_df": returns_df,
+        "returns_df": returns_df, # i removed price data cos i think returns should suffice!
         "cov_matrix": cov_matrix,
         "metrics": metrics,
         "risk_contributions": risk_contributions,

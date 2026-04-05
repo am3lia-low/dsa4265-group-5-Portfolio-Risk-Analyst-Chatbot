@@ -123,14 +123,14 @@ def risk_scoring_tool(raw_metrics: dict) -> dict:
     }
 
 
-def current_portfolio_risk_tool(portfolios: list[dict], all_metrics: dict):
+def current_portfolio_risk_tool(portfolio: dict, all_metrics: dict):
     """
     Evaluate risk for one or multiple portfolios.
 
     Parameters
     ----------
-    portfolios : list[dict]
-        List of portfolio objects. Each must contain:
+    portfolios : dict
+        dictionary containing:
         - tickers : list[str]
         - weights : list[float]
         - (optional) id, investment_amount, currency
@@ -141,35 +141,25 @@ def current_portfolio_risk_tool(portfolios: list[dict], all_metrics: dict):
         Risk results for each portfolio.
     """
 
-    results = []
+    tickers = portfolio["tickers"]
+    weights = np.array(portfolio["weights"], dtype=float)
 
-    for portfolio in portfolios:
-        tickers = portfolio["tickers"]
-        weights = np.array(portfolio["weights"], dtype=float)
+    # Normalize weights (handles % like 50,30,20)
+    weights = weights / weights.sum()
 
-        # Normalize weights (handles % like 50,30,20)
-        weights = weights / weights.sum()
+    # Convert to dict format if needed elsewhere
+    tickers_weights = dict(zip(tickers, weights))
 
-        # Convert to dict format if needed elsewhere
-        tickers_weights = dict(zip(tickers, weights))
+    # Fetch + compute
+    today = datetime.date.today()
+    prices = fetch_price_data(
+        tickers,
+        end=str(today),
+        start=str(today.replace(year=today.year - 5)) # take data from 5 years ago
+    )
 
-        # Fetch + compute
-        today = datetime.date.today()
-        prices = fetch_price_data(
-            tickers,
-            end=str(today),
-            start=str(today.replace(year=today.year - 5)) # take data from 5 years ago
-        )
+    # returns = calculate_returns(prices, method="simple")
 
-        returns = calculate_returns(prices, method="simple")
+    scoring = risk_scoring_tool(risk_metrics_tool(all_metrics))
 
-        raw_metrics = risk_metrics_tool(all_metrics)
-        scoring = risk_scoring_tool(raw_metrics)
-
-        results.append({
-            "portfolio_id": portfolio.get("id"),
-            "risk_score": scoring,
-            "metrics": raw_metrics
-        })
-
-    return results
+    return scoring

@@ -5,15 +5,16 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from typing import Any, Optional
+import pandas as pd
 
 import sys
 import os
 
 import datetime
 from agent_tools.data_tools import fetch_price_data, calculate_returns
-from agent_tools.quant_tools import calculate_all_metrics, metric_benchmarks
+from agent_tools.quant_tools import calculate_all_metrics, metric_benchmarks, calculate_risk_contribution, calculate_covariance_matrix
 from agent_tools.workflow_tools import classify_intent, Intent, IntentResult
-from agent_tools.ml_risk_tools import current_portfolio_risk_tool
+from agent_tools.ml_risk_tools import current_portfolio_risk_tool, future_portfolio_risk
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,7 @@ def set_rag_silent_mode(silent: bool = True):
     global RAG_SILENT_MODE
     RAG_SILENT_MODE = silent
 
+# extracting data & quant stuff
 def data_and_metrics(tickers, weights, year=5):
     END = datetime.date.today()
     START = END.replace(year=END.year - year)
@@ -48,12 +50,40 @@ def data_and_metrics(tickers, weights, year=5):
 
     return (all_metrics, metric_analysis)
 
+# Maps quant_module metric keys to their proper quantitative finance names.
+metric_key_map = {
+        "portfolio_volatility":     "Annualised Portfolio Volatility",
+        "var_95":                   "Value at Risk (95% confidence, historical simulation)",
+        "cvar_95":                  "Conditional Value at Risk / Expected Shortfall (95%)",
+        "max_drawdown":             "Maximum Drawdown (peak-to-trough)",
+        "sharpe_ratio":             "Sharpe Ratio (rf = 4%)",
+        "sortino_ratio":            "Sortino Ratio (rf = 4%)",
+        "beta":                     "Market Beta (vs. SPY)",
+        "hhi_concentration":        "Herfindahl-Hirschman Index (HHI)",
+        "avg_pairwise_correlation": "Average Pairwise Correlation",
+        "vol_of_vol":               "Volatility of Volatility (21-day rolling)",
+        "skewness":                 "Return Distribution Skewness",
+        "excess_kurtosis":          "Excess Kurtosis (Fisher)",
+        "risk_contribution":        "Per-Asset Risk Contribution (%)",
+    }
+
+# lstm window
+FUTURE_VOL_WINDOW = 60
+
 @dataclass
+# outputs whatever ui's update_cache will take in + content to put into generate_explanation
 class WorkflowResult:
     content: str
     intent: Intent
     secondary_intent: Optional[Intent] = None
-    metadata: Optional[dict[str, Any]] = None
+    portfolio: dict
+    returns_df: pd.DataFrame
+    cov_matrix: pd.DataFrame
+    metrics: dict
+    risk_contributions: dict
+    risk_level: dict
+    trend_forecast: dict
+    rag_context: str
 
 
 def _append_secondary_line(base: str, secondary: Optional[Intent]) -> str:
@@ -84,10 +114,6 @@ def _rag_block(intent: str, query: str, top_k: int = 6) -> Optional[str]:
     if not result.chunks:
         return None
 
-    # If silent mode, we only want to show that RAG was used, not the content
-    if RAG_SILENT_MODE:
-        return "**Reference material retrieved**"
-
     parts: list[str] = ["**Reference material**"]
     for i, chunk in enumerate(result.chunks[:top_k], 1):
         text = (chunk.text or "").strip().replace("\n", " ")
@@ -97,39 +123,39 @@ def _rag_block(intent: str, query: str, top_k: int = 6) -> Optional[str]:
     return "\n".join(parts)
 
 
-def _full_analysis_markdown(portfolio: dict, portfolio_changed: bool, all_metrics: dict) -> str:
+def _full_analysis_markdown(portfolio: dict, portfolio_changed: bool, all_metrics: dict, metric_analysis: dict) -> str:
     """
-    amelia notes: what needs to go in
-    [in route_and_execute] calculate_all_metrics -> metric_analysis
+    what needs to go in
+    [BEFORE THAT] calculate_all_metrics -> metric_analysis
     [ADDED] current_portfolio_risk_tool
-    [NOT ADDED] predict_volatility_trend
+    [ADDED] predict_volatility_trend
     [ADDED] retrieve_context
     """
 
-    print("classifying portfolio risk...")
-    rows = current_portfolio_risk_tool([portfolio], all_metrics)
-    if not rows:
-        return "Risk computation returned no data. Check tickers and date range."
+    print("     classifying portfolio risk...")
+    current_risk = current_portfolio_risk_tool(portfolio, all_metrics)
 
-    row = rows[0]
-    metrics: dict = row.get("metrics") or {}
-    score_bundle: dict = row.get("risk_score") or {}
-    level = score_bundle.get("risk_level", "—")
-    score = score_bundle.get("risk_score", 0.0)
-
+    print("     organising metrics...")
     lines = [
         "## Risk summary",
-        f"- **Level:** {level} (composite {float(score):.2f})",
-        "",
-        "## Numbers",
-        f"- Volatility (annualized): **{metrics.get('volatility', 0):.2%}**",
-        f"- VaR (5th pct. daily return): **{metrics.get('VaR', 0):.4f}**",
-        f"- Sharpe (rf ≈ 0): **{metrics.get('sharpe', 0):.2f}**",
-        f"- Max drawdown: **{metrics.get('max_drawdown', 0):.2%}**",
-        f"- Avg. pairwise correlation: **{metrics.get('correlation', 0):.2f}**",
-        f"- Concentration (HHI): **{metrics.get('concentration', 0):.2f}**",
+        f"- **Level:** {current_risk["risk_level"]} (composite {float(current_risk["risk_score"]):.2f})",
+        "## Metrics",
     ]
+    for metric, details in metric_analysis.items():
+        lines.append(
+            f"- {metric_key_map[metric]}: {details["value"]:.2%}, {details["label"]}, {details["comment"]}"
+        )
 
+    print("     predicting future volatility...")
+    future_risk = future_portfolio_risk(portfolio, FUTURE_VOL_WINDOW)
+    lines.append (
+        "## Future volatility for the next {FUTURE_VOL_WINDOW} days",
+        f"Predicted Volatility: {future_risk["predicted_volatility"]}",
+        f"Predicted Direction: {future_risk["predicted_direction"]} with a probability of {future_risk["prob_up"]}.",
+        f"Overall Confidence of this prediction: {future_risk["confidence"]}"
+    )
+
+    print("     running RAG retrieval...")
     rag = _rag_block(_RAG_INTENT_FULL, "portfolio risk diversification rebalancing")
     if rag:
         lines.extend(["", rag])
@@ -137,18 +163,14 @@ def _full_analysis_markdown(portfolio: dict, portfolio_changed: bool, all_metric
     if portfolio_changed:
         lines.insert(1, "- **Note:** Holdings changed; side-by-side vs. prior snapshot is not implemented yet.")
 
+    print("     gathering all the answers...")
+    WorkflowResult(
+        content="\n".join(lines),
+        inetnt=Intent.FULL_ANALYSIS,
+        portfolio=portfolio
+    )
+
     return "\n".join(lines)
-
-
-def _metric_key_map() -> dict[str, tuple[str, str]]:
-    return {
-        "portfolio_volatility": ("volatility", "Volatility (annualized)"),
-        "var_95": ("VaR", "VaR (5th pct. daily return)"),
-        "max_drawdown": ("max_drawdown", "Max drawdown"),
-        "sharpe_ratio": ("sharpe", "Sharpe ratio"),
-        "hhi_concentration": ("concentration", "HHI concentration"),
-        "avg_pairwise_correlation": ("correlation", "Avg. pairwise correlation"),
-    }
 
 
 def _specific_metric_markdown(
@@ -160,7 +182,6 @@ def _specific_metric_markdown(
         return "Could not load metrics for this portfolio."
 
     metrics: dict = rows[0].get("metrics") or {}
-    mapping = _metric_key_map()
 
     if not extracted:
         return (
@@ -267,13 +288,13 @@ def route_and_execute(
     secondary = intent_result.secondary_intent
 
     # 1. if portfolio change has been detected, data and metrics will be recalibrated here
-    # [NOTE TO SELF: AMELIA, PLS RMB TO ADD THE IF ELSE FOR THIS BY 8TH APR]
-    print("analysing portfolio data & calculating metrics...")
-    all_metrics, metric_analysis = data_and_metrics(portfolio["tickers"], portfolio["weights"])
+    if portfolio_changed:
+        print("calibrating portfolio data & calculating metrics...")
+        all_metrics, metric_analysis = data_and_metrics(portfolio["tickers"], portfolio["weights"])
 
     if primary == Intent.FULL_ANALYSIS:
         print("executing full analysis workflow...")
-        body = _full_analysis_markdown(portfolio, portfolio_changed, all_metrics)
+        body = _full_analysis_markdown(portfolio, portfolio_changed, all_metrics, metric_analysis)
     elif primary == Intent.SPECIFIC_METRIC:
         body = _specific_metric_markdown(portfolio, intent_result.extracted_metrics)
     elif primary == Intent.CONCEPT_EXPLANATION:
