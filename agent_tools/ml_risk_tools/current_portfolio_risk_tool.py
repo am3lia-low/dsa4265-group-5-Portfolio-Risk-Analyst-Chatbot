@@ -85,23 +85,23 @@ def risk_scoring_tool(raw_metrics: dict) -> dict:
 
     vol_norm = clamp(raw_metrics["volatility"] / 0.4)
     var_norm = clamp(abs(raw_metrics["VaR"]) / 0.1)
-    sharpe_norm = clamp((1 - raw_metrics["sharpe"]) / 2)
+    sharpe_norm = clamp(max(0.5 - raw_metrics["sharpe"]/4, 0), 0, 1)
     conc_norm = clamp(raw_metrics["concentration"])
     corr_norm = clamp((raw_metrics["correlation"] + 1) / 2)
     dd_norm = clamp(abs(raw_metrics["max_drawdown"]) / 0.5)
 
     risk_score = (
         0.25 * vol_norm +
-        0.20 * var_norm +
-        0.20 * sharpe_norm +
+        0.15 * var_norm +
+        0.10 * sharpe_norm +
         0.15 * conc_norm +
-        0.10 * corr_norm +
-        0.10 * dd_norm
+        0.15 * corr_norm +
+        0.20 * dd_norm
     )
 
     if risk_score < 0.35:
         label = "Low"
-    elif risk_score <= 0.65:
+    elif risk_score <= 0.60:
         label = "Medium"
     else:
         label = "High"
