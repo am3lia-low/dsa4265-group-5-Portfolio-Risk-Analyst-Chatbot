@@ -288,7 +288,7 @@ def calculate_excess_kurtosis(returns: pd.DataFrame, weights: list) -> float:
 
 # 11. BETA
 def calculate_beta(
-    returns: pd.DataFrame, weights: list, spy_returns: pd.Series
+    returns: pd.DataFrame, weights: list, spy_returns
 ) -> float:
     """
     Compute portfolio beta relative to the S&P 500 (SPY).
@@ -296,12 +296,11 @@ def calculate_beta(
 
     Parameters
     ----------
-    returns : pd.DataFrame
+    returns : pd.DataFrame -> from fetch_price_data
         Daily simple returns. Rows = dates, columns = tickers.
-    weights : list
+    weights : list -> from st session
         Asset weights. Must sum to 1.0.
-    spy_returns : pd.Series
-        Daily simple returns of SPY. Must cover the same date range.
+    spy_returns: series -> column from returns
 
     Returns
     -------
@@ -309,6 +308,7 @@ def calculate_beta(
         Beta value.
         1.0 = moves with market. >1.0 = amplified. <1.0 = dampened.
     """
+
     port_returns = (returns * np.array(weights)).sum(axis=1)
     aligned = pd.concat([port_returns, spy_returns], axis=1, join="inner").dropna()
     aligned.columns = ["portfolio", "spy"]
@@ -398,10 +398,8 @@ def calculate_risk_contribution(cov_matrix: pd.DataFrame, weights: list) -> dict
 # 15. CALCULATE ALL METRICS — wrapper
 def calculate_all_metrics(
     returns: pd.DataFrame,
-    prices: pd.DataFrame,
+    # prices: pd.DataFrame, # does not seem to be used
     weights: list,
-    spy_returns: pd.Series,
-    cov_matrix: pd.DataFrame,
     rf: float = 0.04,
 ) -> dict:
     """
@@ -413,14 +411,8 @@ def calculate_all_metrics(
     ----------
     returns : pd.DataFrame
         Daily simple returns. Rows = dates, columns = tickers.
-    prices : pd.DataFrame
-        Daily closing prices. Rows = dates, columns = tickers.
     weights : list
         Asset weights. Must sum to 1.0. Order must match columns in returns/prices.
-    spy_returns : pd.Series
-        Daily simple returns of SPY for beta calculation.
-    cov_matrix : pd.DataFrame
-        Pre-computed annualised covariance matrix.
     rf : float
         Annualised risk-free rate. Default 0.04 (4%).
 
@@ -430,14 +422,27 @@ def calculate_all_metrics(
         Flat dictionary of all 12 metrics. Keys match Wen Xin's NN feature names.
         Risk contribution is nested dict — for LLM context only, not NN input.
     """
+
+    # note:
+    # using fetch_price_data in data_tools, spy is added automatically
+    # but whether or not it is actually inside the portfolio is another thing
+
+    # checking if SPY in portfolio
+    #   (if yes, keep returns as is)
+    #   (if no, drop the column)
+    spy_returns = returns['SPY']
+    if len(weights) == (len(returns.columns)-1): # assuming the missing weight, is infact, bcos of SPY
+        returns = returns.drop(columns="SPY")
+
+    # covariance matrix
+    cov_matrix = calculate_covariance_matrix(returns)
+
     metrics = {
-        # --- NN inputs (Wen Xin's weighted risk score formula) ---
         "portfolio_volatility": calculate_portfolio_volatility(cov_matrix, weights),
         "var_95": calculate_var(returns, weights, conf=0.95),
         "sharpe_ratio": calculate_sharpe_ratio(returns, weights, rf),
         "hhi_concentration": calculate_hhi(weights),
         "avg_pairwise_correlation": calculate_avg_pairwise_correlation(cov_matrix),
-        # --- Additional metrics for LLM context ---
         "cvar_95": calculate_cvar(returns, weights, conf=0.95),
         "vol_of_vol": calculate_vol_of_vol(returns, weights),
         "max_drawdown": calculate_mdd(returns, weights),

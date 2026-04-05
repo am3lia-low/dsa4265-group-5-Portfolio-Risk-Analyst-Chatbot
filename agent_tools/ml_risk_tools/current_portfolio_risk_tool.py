@@ -5,60 +5,71 @@ import datetime
 from agent_tools.data_tools.fetch_price_data import fetch_price_data
 from agent_tools.data_tools.calculate_returns import calculate_returns
 
-def risk_metrics_tool(returns: pd.DataFrame, weights: np.ndarray) -> dict:
-    """
-    Compute core portfolio risk metrics from asset return series and weights.
+# def risk_metrics_tool(returns: pd.DataFrame, weights: np.ndarray) -> dict:
+#     """
+#     Compute core portfolio risk metrics from asset return series and weights.
 
-    Parameters
-    ----------
-    returns : pd.DataFrame
-        Asset return series (rows = dates, columns = assets).
-    weights : np.ndarray
-        Portfolio weights aligned with the columns of `returns`.
+#     Parameters
+#     ----------
+#     returns : pd.DataFrame
+#         Asset return series (rows = dates, columns = assets).
+#     weights : np.ndarray
+#         Portfolio weights aligned with the columns of `returns`.
 
-    Returns
-    -------
-    dict
-        Dictionary of raw portfolio risk metrics:
-        - volatility : float
-            Annualized standard deviation of portfolio returns.
-        - VaR : float
-            5th percentile Value at Risk (historical).
-        - sharpe : float
-            Annualized Sharpe ratio (assumes risk-free rate = 0).
-        - max_drawdown : float
-            Maximum drawdown of cumulative returns.
-        - correlation : float
-            Average pairwise correlation between assets.
-        - concentration : float
-            Herfindahl index (sum of squared weights).
+#     Returns
+#     -------
+#     dict
+#         Dictionary of raw portfolio risk metrics:
+#         - volatility : float
+#             Annualized standard deviation of portfolio returns.
+#         - VaR : float
+#             5th percentile Value at Risk (historical).
+#         - sharpe : float
+#             Annualized Sharpe ratio (assumes risk-free rate = 0).
+#         - max_drawdown : float
+#             Maximum drawdown of cumulative returns.
+#         - correlation : float
+#             Average pairwise correlation between assets.
+#         - concentration : float
+#             Herfindahl index (sum of squared weights).
 
-    """
+#     """
 
-    weights = weights / weights.sum()
-    portfolio_returns = returns.dot(weights)
+#     weights = weights / weights.sum()
+#     portfolio_returns = returns.dot(weights)
 
-    volatility = np.std(portfolio_returns) * np.sqrt(252)
-    VaR = np.percentile(portfolio_returns, 5)
-    sharpe = np.mean(portfolio_returns) / np.std(portfolio_returns) * np.sqrt(252)
+#     volatility = np.std(portfolio_returns) * np.sqrt(252)
+#     VaR = np.percentile(portfolio_returns, 5)
+#     sharpe = np.mean(portfolio_returns) / np.std(portfolio_returns) * np.sqrt(252)
 
-    cumulative = (1 + portfolio_returns).cumprod()
-    peak = cumulative.cummax()
-    drawdown = (cumulative - peak) / peak
-    max_drawdown = drawdown.min()
+#     cumulative = (1 + portfolio_returns).cumprod()
+#     peak = cumulative.cummax()
+#     drawdown = (cumulative - peak) / peak
+#     max_drawdown = drawdown.min()
 
-    corr_matrix = returns.corr()
-    avg_corr = corr_matrix.values[np.triu_indices_from(corr_matrix, k=1)].mean()
+#     corr_matrix = returns.corr()
+#     avg_corr = corr_matrix.values[np.triu_indices_from(corr_matrix, k=1)].mean()
 
-    concentration = np.sum(weights**2)
+#     concentration = np.sum(weights**2)
 
+#     return {
+#         "volatility": volatility,
+#         "VaR": VaR,
+#         "sharpe": sharpe,
+#         "max_drawdown": max_drawdown,
+#         "correlation": avg_corr,
+#         "concentration": concentration
+#     }
+
+def risk_metrics_tool(all_metrics: dict) -> dict:
+    # takes in the all_metrics dictionary from the quant mod and extracts the subset to be used
     return {
-        "volatility": volatility,
-        "VaR": VaR,
-        "sharpe": sharpe,
-        "max_drawdown": max_drawdown,
-        "correlation": avg_corr,
-        "concentration": concentration
+        "volatility": all_metrics["portfolio_volatility"],
+        "VaR": all_metrics["var_95"],
+        "sharpe": all_metrics["sharpe_ratio"],
+        "max_drawdown": all_metrics["max_drawdown"],
+        "correlation": all_metrics["avg_pairwise_correlation"],
+        "concentration": all_metrics["hhi_concentration"]
     }
 
 def risk_scoring_tool(raw_metrics: dict) -> dict:
@@ -112,7 +123,7 @@ def risk_scoring_tool(raw_metrics: dict) -> dict:
     }
 
 
-def current_portfolio_risk_tool(portfolios: list[dict]):
+def current_portfolio_risk_tool(portfolios: list[dict], all_metrics: dict):
     """
     Evaluate risk for one or multiple portfolios.
 
@@ -143,15 +154,16 @@ def current_portfolio_risk_tool(portfolios: list[dict]):
         tickers_weights = dict(zip(tickers, weights))
 
         # Fetch + compute
+        today = datetime.date.today()
         prices = fetch_price_data(
             tickers,
-            start="2020-01-01",
-            end=str(datetime.date.today())
+            end=str(today),
+            start=str(today.replace(year=today.year - 5)) # take data from 5 years ago
         )
 
         returns = calculate_returns(prices, method="simple")
 
-        raw_metrics = risk_metrics_tool(returns, weights)
+        raw_metrics = risk_metrics_tool(all_metrics)
         scoring = risk_scoring_tool(raw_metrics)
 
         results.append({

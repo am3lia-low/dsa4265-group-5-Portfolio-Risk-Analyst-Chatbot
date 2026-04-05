@@ -163,19 +163,23 @@ def _collect_all_chunks(
     concept_store:    ConceptStore   | None = None,
     strategy_store:   StrategyStore  | None = None,
     force_refresh:    bool           = False,
-) -> list[dict]:
+    silent:           bool           = False,
+) -> tuple[list[dict], list[str]]:
     """
     Gather chunks from all KB sources relevant to the detected intent.
- 
+
     Returns a flat list of chunk dicts, each with:
       kb_source, text, citation_id, source_url, source_type, intent_tags
+    And a list of used stores
     """
     sources   = INTENT_SOURCES.get(intent, INTENT_SOURCES["fallback"])
     all_chunks: list[dict] = []
- 
+    used_stores: list[str] = []
+
     # ── kb1: Ticker profiles ───────────────────────────────────────────────
     if "tickers" in sources and resolved_tickers:
-        print(f"  📥 kb1: loading ticker profiles for {resolved_tickers}")
+        if not silent:
+            print(f"  📥 kb1: loading ticker profiles for {resolved_tickers}")
         _ensure_kb1_files(resolved_tickers, force=force_refresh)
         kb1_docs = _load_kb1_documents()
         # Filter to only resolved tickers for this query
@@ -188,36 +192,47 @@ def _collect_all_chunks(
             if "citation_id" not in d:
                 d["citation_id"] = f"ticker-{d['ticker']}-{i}"
         all_chunks.extend(filtered)
-        print(f"    → {len(filtered)} ticker chunks")
- 
+        if not silent:
+            print(f"    → {len(filtered)} ticker chunks")
+
     # ── kb2: Macro ─────────────────────────────────────────────────────────
     if "macro" in sources and macro_store is not None:
-        print("  📥 kb2: loading macro chunks + writing TXT")
+        used_stores.append("MacroStore")
+        if not silent:
+            print("  📥 kb2: loading macro chunks + writing TXT")
         if force_refresh or macro_store._is_stale():
             macro_store.refresh(force=force_refresh)
         chunks = macro_store.generate_chunks()
         macro_store.export_txt()
         all_chunks.extend(chunks)
-        print(f"    → {len(chunks)} macro chunks")
- 
+        if not silent:
+            print(f"    → {len(chunks)} macro chunks")
+
     # ── kb3: Concepts ──────────────────────────────────────────────────────
     if "concepts" in sources and concept_store is not None:
-        print("  📥 kb3: loading concept chunks + writing TXT")
+        used_stores.append("ConceptStore")
+        if not silent:
+            print("  📥 kb3: loading concept chunks + writing TXT")
         chunks = concept_store.generate_chunks()
         concept_store.export_txt()
         all_chunks.extend(chunks)
-        print(f"    → {len(chunks)} concept chunks")
- 
+        if not silent:
+            print(f"    → {len(chunks)} concept chunks")
+
     # ── kb4: Strategies ────────────────────────────────────────────────────
     if "strategies" in sources and strategy_store is not None:
-        print("  📥 kb4: loading strategy chunks + writing TXT")
+        used_stores.append("StrategyStore")
+        if not silent:
+            print("  📥 kb4: loading strategy chunks + writing TXT")
         chunks = strategy_store.generate_chunks()
         strategy_store.export_txt()
         all_chunks.extend(chunks)
-        print(f"    → {len(chunks)} strategy chunks")
- 
-    print(f"  Total chunks in pool: {len(all_chunks)}")
-    return all_chunks
+        if not silent:
+            print(f"    → {len(chunks)} strategy chunks")
+
+    if not silent:
+        print(f"  Total chunks in pool: {len(all_chunks)}")
+    return all_chunks, used_stores
 
 # =============================================================================
 # SECTION 2 — CHROMA: MULTI-COLLECTION MANAGEMENT
@@ -667,11 +682,12 @@ def retrieve_context(
     concept_store:   ConceptStore   | None = None,
     strategy_store:  StrategyStore  | None = None,
     fred_api_key:    str            | None = None,
+    silent:          bool           = False,
 ) -> RetrievalResult:
     """
     Retrieval stage: look at which intent → collect chunks → embed → retrieve →
     post-process → evaluate → log.
- 
+
     Parameters
     ----------
     intent           : Detect intent string (full_analysis, concept_explanation, trend_prediction)
@@ -684,13 +700,14 @@ def retrieve_context(
     concept_store    : Pre-initialised ConceptStore (or None to auto-create)
     strategy_store   : Pre-initialised StrategyStore (or None to auto-create)
     fred_api_key     : FRED API key for macro data (or set FRED_API_KEY env var)
- 
+    silent           : Whether to suppress print statements and only return MRR/store info
+
     Returns
     -------
     (filtered_chunks, retrieval_metrics, log_path)
     """
-    resolved_tickers = [] 
-    
+    resolved_tickers = []
+
     # 1. Intent detection (intent needed from LLM)
     if intent == "full_analysis":
         resolved_tickers = resolve_tickers_from_query(query)
@@ -703,27 +720,30 @@ def retrieve_context(
     elif intent == "trend_prediction":
         resolved_tickers = resolve_tickers_from_query(query)
         macro_store      = macro_store or MacroStore(fred_api_key=fred_api_key)
-    
+
     else:
         resolved_tickers = resolve_tickers_from_query(query)
         macro_store      = macro_store or MacroStore(fred_api_key=fred_api_key)
         concept_store    = concept_store or ConceptStore()
         strategy_store   = strategy_store or StrategyStore()
- 
- 
+
+
     # 2. Collect chunks from all relevant KB sources
-    print("\n📚 Collecting chunks from KB sources…")
-    all_chunks = _collect_all_chunks(
+    if not silent:
+        print("\n📚 Collecting chunks from KB sources…")
+    all_chunks, used_stores = _collect_all_chunks(
         intent = intent,
         resolved_tickers=resolved_tickers,
         macro_store=macro_store,
         concept_store=concept_store,
         strategy_store=strategy_store,
         force_refresh=force_refresh,
+        silent=silent,
     )
- 
+
     if not all_chunks:
-        print("  ⚠  No chunks collected — check KB sources")
+        if not silent:
+            print("  ⚠  No chunks collected — check KB sources")
         return RetrievalResult(
             query            = query,
             intent           = intent,
@@ -735,47 +755,53 @@ def retrieve_context(
             ),
             log_path         = "",
         )
- 
+
     # 3. Embed and build Chroma collections
     model  = SentenceTransformer(EMBED_MODEL_NAME)
     client = chromadb.PersistentClient(path=VECTOR_DB_DIR)
-    print("\n🔢 Building vector collections…")
+    if not silent:
+        print("\n🔢 Building vector collections…")
     collections = _build_collections(all_chunks, model, client)
- 
+
     # 4. Hybrid retrieval
-    print(f"\n🔎 Retrieving top-{top_k} chunks…")
+    if not silent:
+        print(f"\n🔎 Retrieving top-{top_k} chunks…")
     raw_results = _hybrid_retrieve_multi(
         query, all_chunks, collections, model, top_k=top_k
     )
- 
+
     # 5. Post-processing
     filtered = _post_process(raw_results, resolved_tickers, score_threshold)
- 
+
     # 6. Retrieval evaluation
     metrics = _compute_retrieval_metrics(raw_results, all_chunks, resolved_tickers, intent, k=top_k)
- 
+
     k_key = f"Recall@{top_k}"
-    print(f"\n📊 {k_key}: {metrics[k_key]:.4f}  MRR: {metrics['MRR']:.4f} ")
-    for flag in metrics.get("diagnostic_flags", []):
-        print(f"  ⚠  {flag}")
- 
-    print(f"\n📄 {len(filtered)} chunks after filtering (was {len(raw_results)}):")
-    for r in filtered:
-        src = r.get("kb_source", "?")
-        print(f"  [{r['rank']}] [{src}] score={r['score']:.3f}  {r['text'][:65]}…")
- 
+    if not silent:
+        print(f"\n📊 {k_key}: {metrics[k_key]:.4f}  MRR: {metrics['MRR']:.4f} ")
+        for flag in metrics.get("diagnostic_flags", []):
+            print(f"  ⚠  {flag}")
+
+        print(f"\n📄 {len(filtered)} chunks after filtering (was {len(raw_results)}):")
+        for r in filtered:
+            src = r.get("kb_source", "?")
+            print(f"  [{r['rank']}] [{src}] score={r['score']:.3f}  {r['text'][:65]}…")
+    else:
+        # Print only MRR and used stores when silent mode is on
+        print(f"MRR: {metrics['MRR']:.4f}, Used Stores: {', '.join(used_stores) if used_stores else 'None'}")
+
     # 7. Save log
     log_path = ""
     if save_log:
         log_path = _save_retrieval_log(
             query, intent, resolved_tickers, raw_results, filtered, metrics
         )
- 
+
     # 8. Parse into Pydantic models
     typed_chunks = [RetrievedChunk(**c) for c in filtered]
 
     typed_metrics = RetrievalMetrics(
-        intent            = intent,            
+        intent            = intent,
         recall_at_k       = metrics[f"Recall@{top_k}"],
         mrr               = metrics["MRR"],
         retrieved_sources = metrics["retrieved_sources"],

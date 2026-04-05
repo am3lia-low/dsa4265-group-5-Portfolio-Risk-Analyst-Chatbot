@@ -38,7 +38,7 @@ ENV_PATH = BASE_DIR / ".env"
 
 if ENV_PATH.exists():
     load_dotenv(dotenv_path=ENV_PATH)
-    print(f"fetching freddie from env:{ENV_PATH}")
+    print(f"fetching freddie from .env 🐊")
 else:
     print("⚠ .env file not found for RAG kb2")
 

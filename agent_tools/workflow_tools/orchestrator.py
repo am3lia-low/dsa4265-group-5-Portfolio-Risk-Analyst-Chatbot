@@ -9,8 +9,10 @@ from typing import Any, Optional
 import sys
 import os
 
-
-from agent_tools.workflow_tools.agent_llm import classify_intent, Intent, IntentResult
+import datetime
+from agent_tools.data_tools import fetch_price_data, calculate_returns
+from agent_tools.quant_tools import calculate_all_metrics, metric_benchmarks
+from agent_tools.workflow_tools import classify_intent, Intent, IntentResult
 from agent_tools.ml_risk_tools import current_portfolio_risk_tool
 
 logger = logging.getLogger(__name__)
@@ -20,6 +22,31 @@ _RAG_INTENT_FULL = "full_analysis"
 _RAG_INTENT_CONCEPT = "concept_explanation"
 _RAG_INTENT_TREND = "trend_prediction"
 
+# Silent mode for RAG outputs
+RAG_SILENT_MODE = False
+
+def set_rag_silent_mode(silent: bool = True):
+    """Set the global RAG silent mode."""
+    global RAG_SILENT_MODE
+    RAG_SILENT_MODE = silent
+
+def data_and_metrics(tickers, weights, year=5):
+    END = datetime.date.today()
+    START = END.replace(year=END.year - year)
+
+    # extract data
+    prices = fetch_price_data(
+        tickers=tickers,
+        start=str(START), end=str(END),
+        include_spy=True
+    )
+    returns = calculate_returns(prices, method="simple")
+
+    # calculate metrics
+    all_metrics = calculate_all_metrics(returns=returns, weights=weights)
+    metric_analysis = metric_benchmarks(all_metrics)
+
+    return (all_metrics, metric_analysis)
 
 @dataclass
 class WorkflowResult:
@@ -48,6 +75,7 @@ def _rag_block(intent: str, query: str, top_k: int = 6) -> Optional[str]:
             query=query,
             top_k=top_k,
             save_log=False,
+            silent=RAG_SILENT_MODE,
         )
     except Exception as exc:
         logger.warning("retrieve_context failed: %s", exc)
@@ -55,6 +83,10 @@ def _rag_block(intent: str, query: str, top_k: int = 6) -> Optional[str]:
 
     if not result.chunks:
         return None
+
+    # If silent mode, we only want to show that RAG was used, not the content
+    if RAG_SILENT_MODE:
+        return "**Reference material retrieved**"
 
     parts: list[str] = ["**Reference material**"]
     for i, chunk in enumerate(result.chunks[:top_k], 1):
@@ -65,8 +97,17 @@ def _rag_block(intent: str, query: str, top_k: int = 6) -> Optional[str]:
     return "\n".join(parts)
 
 
-def _full_analysis_markdown(portfolio: dict, portfolio_changed: bool) -> str:
-    rows = current_portfolio_risk_tool([portfolio])
+def _full_analysis_markdown(portfolio: dict, portfolio_changed: bool, all_metrics: dict) -> str:
+    """
+    amelia notes: what needs to go in
+    [in route_and_execute] calculate_all_metrics -> metric_analysis
+    [ADDED] current_portfolio_risk_tool
+    [NOT ADDED] predict_volatility_trend
+    [ADDED] retrieve_context
+    """
+
+    print("classifying portfolio risk...")
+    rows = current_portfolio_risk_tool([portfolio], all_metrics)
     if not rows:
         return "Risk computation returned no data. Check tickers and date range."
 
@@ -225,8 +266,14 @@ def route_and_execute(
     primary = intent_result.primary_intent
     secondary = intent_result.secondary_intent
 
+    # 1. if portfolio change has been detected, data and metrics will be recalibrated here
+    # [NOTE TO SELF: AMELIA, PLS RMB TO ADD THE IF ELSE FOR THIS BY 8TH APR]
+    print("analysing portfolio data & calculating metrics...")
+    all_metrics, metric_analysis = data_and_metrics(portfolio["tickers"], portfolio["weights"])
+
     if primary == Intent.FULL_ANALYSIS:
-        body = _full_analysis_markdown(portfolio, portfolio_changed)
+        print("executing full analysis workflow...")
+        body = _full_analysis_markdown(portfolio, portfolio_changed, all_metrics)
     elif primary == Intent.SPECIFIC_METRIC:
         body = _specific_metric_markdown(portfolio, intent_result.extracted_metrics)
     elif primary == Intent.CONCEPT_EXPLANATION:

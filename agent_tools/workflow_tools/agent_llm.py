@@ -1,33 +1,32 @@
 """
-Intent Classification Module for Portfolio Risk Analyst Agent
-==============================================================
-Classifies user messages into 6 intents using Gemini 2.5 Flash-Lite.
+Agent LLM Module for Portfolio Risk Analyst Agent
+===================================================
+Unified module for all LLM interactions:
+  1. Intent classification (Gemini 2.5 Flash-Lite)
+  2. Explanation generation (Gemini 2.5 Flash)
+  3. API key rotation with automatic retry on 429
 
 Design:
-  - LLM-only classification via Google GenAI SDK (no heuristic layer)
-  - Constrained output via Pydantic structured JSON schema
-  - Multi-intent support (primary + optional secondary, max 2)
-  - All disambiguation rules baked into the system prompt
-  - Fuzzy matching as safety net (not a classification system)
-  - Minimal pre-check for empty messages only
+  - Single shared Gemini client with key rotation
+  - Intent classification: structured JSON output via Pydantic
+  - Explanation generation: free-form text, prompt adapts to intent
+  - Rate limit errors bubble up for key rotation handling
+  - Non-Gemini API keys (e.g. RAG/embeddings) loaded separately
 
 Assumptions:
-  - A portfolio is ALWAYS present (UI prevents queries without one)
-  - Ticker validation is handled by the UI form
-  - Rebalance is merged into full_analysis — if portfolio_changed is true,
-    the orchestrator compares current vs previous automatically
+  - Portfolio is ALWAYS present (UI enforces this)
+  - Rebalance merged into full_analysis
+  - Orchestrator assembles ExplanationContext before calling generate_explanation()
 
-Models:
-  - Intent classification: gemini-2.5-flash-lite (15 RPM, 1000 RPD free)
-  - Explanation generation: gemini-2.5-flash (separate module)
-
-SDK: google-genai (the unified SDK, NOT the deprecated google-generativeai)
+SDK: google-genai (unified SDK)
   Install: pip install google-genai
 """
 
 import json
 import logging
-from dataclasses import dataclass
+import os
+import time
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Optional
 
@@ -38,11 +37,129 @@ from pydantic import BaseModel, Field
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
+# =============================================================================
 # Constants
-# ---------------------------------------------------------------------------
+# =============================================================================
 CLASSIFIER_MODEL = "gemini-2.5-flash-lite"
+EXPLANATION_MODEL = "gemini-2.5-flash"
 
+
+# =============================================================================
+# API Key Rotation
+# =============================================================================
+class KeyRotator:
+    """Manages multiple Gemini API keys with automatic rotation on 429 errors.
+
+    Sticks with the SAME key until a rate limit is hit, then switches
+    to the next key and retries the failed request.
+
+    Usage:
+        rotator = KeyRotator()
+        result = rotator.call_with_retry(lambda client: classify_intent(..., client=client))
+    """
+
+    def __init__(self, keys: Optional[list[str]] = None):
+        """
+        Parameters
+        ----------
+        keys : list[str] | None
+            List of Gemini API keys. If None, loads from env vars
+            GEMINI_API_KEY1 through GEMINI_API_KEY6, falling back
+            to GEMINI_API_KEY or GOOGLE_API_KEY.
+        """
+        if keys is None:
+            keys = self._load_keys_from_env()
+
+        if not keys:
+            raise ValueError(
+                "No Gemini API keys found. Set GEMINI_API_KEY1 through "
+                "GEMINI_API_KEY6 in your .env file, or set GEMINI_API_KEY."
+            )
+
+        self.keys = keys
+        self.current_index = 0
+        self.clients = [genai.Client(api_key=k) for k in self.keys]
+        logger.info("KeyRotator initialized with %d API key(s).", len(self.keys))
+
+    @staticmethod
+    def _load_keys_from_env() -> list[str]:
+        """Load API keys from environment variables."""
+        keys = []
+        for i in range(1, 7):
+            key = os.environ.get(f"GEMINI_API_KEY{i}")
+            if key:
+                keys.append(key)
+
+        # Fallback to single key
+        if not keys:
+            single = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+            if single:
+                keys.append(single)
+
+        return keys
+
+    @property
+    def current_client(self) -> genai.Client:
+        """The currently active Gemini client."""
+        return self.clients[self.current_index]
+
+    def rotate(self):
+        """Switch to the next API key. Only called on 429 errors."""
+        old = self.current_index
+        self.current_index = (self.current_index + 1) % len(self.clients)
+        logger.warning(
+            "Key %d rate limited → switched to key %d", old + 1, self.current_index + 1
+        )
+
+    def call_with_retry(self, fn, max_retries: Optional[int] = None):
+        """
+        Execute fn(client) with automatic key rotation on rate limit errors.
+
+        Parameters
+        ----------
+        fn : callable
+            Function that takes a genai.Client and returns a result.
+        max_retries : int | None
+            Max retry attempts. Defaults to 2x the number of keys.
+
+        Returns
+        -------
+        The return value of fn(client).
+        """
+        if max_retries is None:
+            max_retries = len(self.keys) * 2
+
+        for attempt in range(max_retries):
+            try:
+                return fn(self.current_client)
+            except Exception as e:
+                error_str = str(e).lower()
+                error_code = getattr(e, "code", None)
+                is_rate_limit = (
+                    error_code == 429
+                    or "429" in error_str
+                    or "resource_exhausted" in error_str
+                    or "rate_limit_exceeded" in error_str
+                    or "quota" in error_str
+                )
+
+                if is_rate_limit and attempt < max_retries - 1:
+                    self.rotate()
+                    time.sleep(1)
+                    # If all keys cycled, wait longer
+                    if (attempt + 1) % len(self.keys) == 0:
+                        logger.warning(
+                            "All %d keys exhausted, waiting 30s...", len(self.keys)
+                        )
+                        time.sleep(30)
+                    continue
+                else:
+                    raise
+
+
+# =============================================================================
+# Intent Classification
+# =============================================================================
 
 # ---------------------------------------------------------------------------
 # Intent enum (6 intents — rebalance merged into full_analysis)
@@ -57,11 +174,10 @@ class Intent(str, Enum):
 
 
 # ---------------------------------------------------------------------------
-# Pydantic schema for constrained output
+# Pydantic schema for constrained classifier output
 # ---------------------------------------------------------------------------
 class IntentClassification(BaseModel):
-    """Schema enforced by Gemini's structured output. The model MUST return
-    a JSON object matching this shape."""
+    """Schema enforced by Gemini's structured output."""
 
     primary_intent: str = Field(
         description=(
@@ -99,7 +215,7 @@ class IntentClassification(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Result dataclass (what route_and_execute() consumes)
+# Intent result dataclass
 # ---------------------------------------------------------------------------
 @dataclass
 class IntentResult:
@@ -113,7 +229,7 @@ class IntentResult:
 
 
 # ---------------------------------------------------------------------------
-# System prompt — all disambiguation rules baked in
+# Classifier system prompt
 # ---------------------------------------------------------------------------
 CLASSIFY_SYSTEM_PROMPT = """\
 You are the intent classifier for a portfolio risk analysis chatbot.
@@ -154,25 +270,6 @@ to decide whether to compare against a previous portfolio.
    Also covers HYPOTHETICAL questions — if the user asks "what if I had X" or
    "would Y be risky in general", they are asking about concepts, not requesting
    analysis of their actual portfolio.
-   
-   The agent can ONLY compute these 13 metrics — there are no others:
-    - portfolio_volatility: annualized standard deviation
-    - vol_of_vol: volatility instability (21-day rolling)
-    - var_95: Value at Risk at 95% confidence
-    - cvar_95: Conditional VaR / Expected Shortfall
-    - max_drawdown: largest peak-to-trough decline
-    - sharpe_ratio: return per unit of total volatility
-    - sortino_ratio: return per unit of downside volatility
-    - skewness: crash vs rally asymmetry
-    - excess_kurtosis: tail fatness / black swan frequency
-    - beta: portfolio sensitivity to S&P 500
-    - hhi_concentration: weight concentration index
-    - avg_pairwise_correlation: diversification level
-    - risk_contribution: per-asset share of portfolio volatility
-
-    When a user's question maps to one or more of these metrics, classify as
-    specific_metric. If their question cannot be answered by any of these
-    metrics, classify as full_analysis or concept_explanation as appropriate.
 
 4. **trend_prediction** — User asks about FUTURE risk outlook or volatility forecast.
    Examples: "Will my risk increase?", "What's the outlook?", "Predict future volatility"
@@ -197,7 +294,9 @@ to decide whether to compare against a previous portfolio.
 - If the user asks a BROAD or VAGUE question about OVERALL risk/portfolio quality
   ("is this risky?", "how's my risk?", "assess my portfolio", "risk breakdown",
   single word "risk") → full_analysis
+- If the user asks about changing/rebalancing their portfolio → full_analysis
 - When in doubt between full_analysis and specific_metric → choose full_analysis.
+  It is better to give a comprehensive answer than to guess which single metric they want.
 
 ### Empty messages and form signals (IMPORTANT)
 - When the user message is EMPTY, the form signals tell you the intent:
@@ -235,7 +334,6 @@ to decide whether to compare against a previous portfolio.
 Entity extraction is CRITICAL — downstream workflows depend on it.
 
 ### Mandatory extraction by intent
-
 - **specific_metric** → you MUST populate extracted_metrics. If the user says something
   vague like "how's my downside?" or "tell me about my risk numbers", infer the most
   likely metrics. Map common phrases:
@@ -270,9 +368,9 @@ Entity extraction is CRITICAL — downstream workflows depend on it.
 INTENT_ALIASES: dict[str, str] = {
     "full": "full_analysis",
     "analysis": "full_analysis",
-    "rebalance": "full_analysis",      # merged into full_analysis
-    "compare": "full_analysis",         # merged into full_analysis
-    "comparison": "full_analysis",      # merged into full_analysis
+    "rebalance": "full_analysis",
+    "compare": "full_analysis",
+    "comparison": "full_analysis",
     "metric": "specific_metric",
     "specific": "specific_metric",
     "concept": "concept_explanation",
@@ -299,25 +397,21 @@ def _resolve_intent(raw: str) -> Intent:
         pass
     for alias, intent_name in INTENT_ALIASES.items():
         if alias in raw:
-            logger.warning(
-                "Fuzzy matched intent '%s' -> '%s'", raw, intent_name,
-            )
+            logger.warning("Fuzzy matched intent '%s' -> '%s'", raw, intent_name)
             return Intent(intent_name)
     logger.error("Could not resolve intent '%s', defaulting to general_chat", raw)
     return Intent.GENERAL_CHAT
 
 
 # ---------------------------------------------------------------------------
-# Context builder
+# Classifier context builder
 # ---------------------------------------------------------------------------
-def _build_context(
+def _build_classifier_context(
     message: str,
     recent_history: list[dict],
     portfolio_changed: bool,
 ) -> str:
-    """Build the user-turn context string for the LLM.
-    Portfolio is always present (UI guarantees this)."""
-    # Chat history (already trimmed by caller)
+    """Build the context string for the classifier LLM."""
     if recent_history:
         lines = []
         for msg in recent_history:
@@ -341,21 +435,7 @@ def _build_context(
 
 
 # ---------------------------------------------------------------------------
-# Minimal pre-check (guard clause only)
-# ---------------------------------------------------------------------------
-def _pre_check(message: str) -> Optional[IntentResult]:
-    """Return IntentResult for trivially invalid inputs, or None to proceed."""
-    if not message or not message.strip():
-        return IntentResult(
-            primary_intent=Intent.GENERAL_CHAT,
-            confidence=1.0,
-            reasoning="Empty message — nothing to classify",
-        )
-    return None
-
-
-# ---------------------------------------------------------------------------
-# Main classify function
+# Classify intent
 # ---------------------------------------------------------------------------
 def classify_intent(
     message: str,
@@ -365,6 +445,10 @@ def classify_intent(
 ) -> IntentResult:
     """
     Classify a user message into one or more of 6 intents.
+    Uses Gemini 2.5 Flash-Lite with structured JSON output.
+
+    Rate limit errors (429) are re-raised for the caller (e.g. KeyRotator)
+    to handle via key rotation.
 
     Parameters
     ----------
@@ -372,29 +456,29 @@ def classify_intent(
         The user's current message.
     recent_history : list[dict]
         Recent chat history, already trimmed by caller (last 3-4 exchanges).
-        Each dict: {"role": "user"|"assistant", "content": "..."}.
     portfolio_changed : bool
         True if the portfolio form was just updated this turn.
     client : genai.Client | None
-        Gemini client. If None, creates one from env var GEMINI_API_KEY.
+        Gemini client. If None, creates one from env var.
 
     Returns
     -------
     IntentResult
     """
-    # Step 0: Guard clause
-    quick = _pre_check(message)
-    if quick is not None:
-        return quick
+    # Guard clause: empty messages
+    if not message or not message.strip():
+        return IntentResult(
+            primary_intent=Intent.GENERAL_CHAT,
+            confidence=1.0,
+            reasoning="Empty message — nothing to classify",
+        )
 
-    # Step 1: Initialize client
     if client is None:
         client = genai.Client()
 
-    # Step 2: Build context
-    context = _build_context(message, recent_history, portfolio_changed)
+    context = _build_classifier_context(message, recent_history, portfolio_changed)
 
-    # Step 3: Call Gemini with structured output
+    # Call Gemini with structured output
     try:
         response = client.models.generate_content(
             model=CLASSIFIER_MODEL,
@@ -407,9 +491,9 @@ def classify_intent(
             ),
         )
     except Exception as e:
-        # Let rate limit errors bubble up so callers (e.g. key rotator) can handle them
+        # Let rate limit errors bubble up for key rotation
         error_str = str(e).lower()
-        error_code = getattr(e, 'code', None)
+        error_code = getattr(e, "code", None)
         is_rate_limit = (
             error_code == 429
             or "429" in error_str
@@ -418,7 +502,7 @@ def classify_intent(
             or "quota" in error_str
         )
         if is_rate_limit:
-            raise  # let caller handle rotation
+            raise
 
         logger.error("Gemini API call failed: %s", e)
         return IntentResult(
@@ -427,7 +511,7 @@ def classify_intent(
             reasoning=f"LLM call failed: {e}",
         )
 
-    # Step 4: Parse structured response
+    # Parse structured response
     try:
         data = json.loads(response.text)
     except (json.JSONDecodeError, TypeError) as e:
@@ -438,9 +522,8 @@ def classify_intent(
             reasoning=f"Response parsing failed: {e}",
         )
 
-    # Step 5: Build IntentResult with fuzzy match safety net
+    # Build IntentResult with fuzzy match safety net
     primary = _resolve_intent(data.get("primary_intent", "general_chat"))
-
     secondary = None
     raw_secondary = data.get("secondary_intent")
     if raw_secondary:
@@ -464,3 +547,307 @@ def classify_intent(
     )
 
     return result
+
+
+# =============================================================================
+# Explanation Generation
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# ExplanationContext — standard input from the orchestrator
+# ---------------------------------------------------------------------------
+@dataclass
+class ExplanationContext:
+    """Standard data package assembled by route_and_execute() and passed
+    to generate_explanation().
+
+    All fields are optional except intent, user_query, and portfolio.
+    The orchestrator populates only what's relevant for the current intent.
+    The explanation LLM adapts based on what's present vs None.
+    """
+
+    # --- Always present ---
+    intent: Intent
+    user_query: str
+    portfolio: dict  # {"tickers": [...], "weights": [...], "investment_amount": ..., ...}
+
+    # --- Metrics (full_analysis, specific_metric, follow_up) ---
+    metrics: Optional[dict] = None
+    risk_contributions: Optional[dict] = None
+    metric_benchmarks: Optional[dict] = None
+    requested_metrics: Optional[list[str]] = None
+
+    # --- ML predictions (full_analysis, trend_prediction) ---
+    risk_level: Optional[dict] = None
+    trend_forecast: Optional[dict] = None
+
+    # --- Comparison (full_analysis when portfolio_changed) ---
+    portfolio_changed: bool = False
+    previous_metrics: Optional[dict] = None
+    previous_contributions: Optional[dict] = None
+    previous_risk_level: Optional[dict] = None
+
+    # --- RAG context ---
+    company_context: Optional[str] = None
+    educational_context: Optional[str] = None
+
+    # --- Conversation ---
+    chat_history: Optional[list[dict]] = None
+
+    # --- Concept (concept_explanation) ---
+    concept_name: Optional[str] = None
+
+
+# ---------------------------------------------------------------------------
+# Explanation system prompt
+# ---------------------------------------------------------------------------
+EXPLAIN_SYSTEM_PROMPT = """\
+You are a portfolio risk analyst assistant. Your job is to explain portfolio
+risk analysis results to users in a clear, informative, and helpful way.
+
+You will receive structured data about the user's portfolio, risk metrics,
+ML predictions, and contextual information. Your response should be
+conversational, insightful, and tailored to what the user asked.
+
+## Guidelines
+
+- Be concise but thorough. Prioritize the most important insights.
+- Use plain language. Define technical terms when you first use them.
+- Reference specific numbers from the data provided.
+- When metrics have benchmarks, compare the user's values to them.
+- When giving recommendations, explain the tradeoffs.
+- Always be honest about uncertainty, especially for predictions.
+- Do NOT make up data. Only reference values that were provided to you.
+- Do NOT provide specific financial advice (e.g. "you should buy X").
+  Instead, explain what the data shows and let the user decide.
+
+## Response style by intent
+
+### full_analysis (standalone — no portfolio change)
+Give a comprehensive risk assessment covering:
+1. Overall risk level (from NN classification) and what it means
+2. Key risk drivers (which assets contribute most to risk)
+3. Notable metrics — highlight anything concerning or strong
+4. Trend outlook (if LSTM forecast is provided)
+5. Brief recommendations for consideration
+
+### full_analysis (comparison — portfolio changed)
+Focus on what CHANGED:
+1. What improved and by how much
+2. What worsened and by how much
+3. How the risk level shifted
+4. Which assets are now the biggest risk drivers
+5. Overall assessment: is this change beneficial?
+Use clear before/after comparisons with specific numbers.
+
+### specific_metric
+Focus narrowly on the requested metric(s):
+1. Current value and what it means
+2. How it compares to benchmarks (good/bad/neutral)
+3. Brief context on why it matters for this portfolio
+Keep it focused — don't volunteer a full analysis unless asked.
+
+### concept_explanation
+Teach the concept clearly:
+1. What it is in plain language
+2. Why it matters for portfolio risk
+3. How it's calculated (simplified)
+4. If the user has portfolio data available, illustrate with their real numbers
+Keep it educational. This is a teaching moment.
+
+### trend_prediction
+Present the forecast with appropriate caveats:
+1. What the model predicts (direction + magnitude)
+2. Current baseline for comparison
+3. What could cause the prediction to be wrong
+4. ALWAYS include uncertainty disclaimers — predictions are estimates, not guarantees
+
+### follow_up
+Be concise and direct:
+1. Address exactly what the user asked about
+2. Reference the previous response
+3. Provide additional detail or clarification
+Don't repeat the entire previous analysis.
+
+### general_chat
+Be friendly and helpful:
+- Greetings: respond warmly, mention what you can do
+- Capabilities: list the types of analysis available
+- Off-topic: gently redirect to portfolio risk analysis
+"""
+
+
+# ---------------------------------------------------------------------------
+# Build explanation prompt from ExplanationContext
+# ---------------------------------------------------------------------------
+def _build_explanation_prompt(ctx: ExplanationContext) -> str:
+    """Convert ExplanationContext into a structured prompt for the explanation LLM."""
+    sections = []
+
+    # User query
+    sections.append(f"## User's question\n{ctx.user_query}")
+
+    # Portfolio
+    tickers = ctx.portfolio.get("tickers", [])
+    weights = ctx.portfolio.get("weights", [])
+    investment = ctx.portfolio.get("investment_amount", "N/A")
+    currency = ctx.portfolio.get("currency", "USD")
+    holdings = ", ".join(f"{t} ({w}%)" for t, w in zip(tickers, weights))
+    sections.append(
+        f"## Current portfolio\n{holdings}\n"
+        f"Total investment: {currency} {investment}"
+    )
+
+    # Metrics
+    if ctx.metrics:
+        metrics_str = "\n".join(f"- {k}: {v}" for k, v in ctx.metrics.items())
+        sections.append(f"## Current metrics\n{metrics_str}")
+
+    # Requested metrics (for specific_metric)
+    if ctx.requested_metrics:
+        sections.append(
+            f"## Requested metrics (focus on these)\n"
+            f"{', '.join(ctx.requested_metrics)}"
+        )
+
+    # Risk contributions
+    if ctx.risk_contributions:
+        contrib_str = "\n".join(
+            f"- {k}: {v:.1%}" if isinstance(v, float) else f"- {k}: {v}"
+            for k, v in ctx.risk_contributions.items()
+        )
+        sections.append(f"## Risk contributions (% of portfolio volatility)\n{contrib_str}")
+
+    # Benchmarks
+    if ctx.metric_benchmarks:
+        bench_str = "\n".join(
+            f"- {k}: {v}" for k, v in ctx.metric_benchmarks.items()
+        )
+        sections.append(f"## Metric benchmarks\n{bench_str}")
+
+    # ML risk level
+    if ctx.risk_level:
+        label = ctx.risk_level.get("label", "Unknown")
+        confidence = ctx.risk_level.get("confidence", 0)
+        sections.append(
+            f"## NN risk classification\n"
+            f"Label: {label} (confidence: {confidence:.0%})"
+        )
+
+    # Trend forecast
+    if ctx.trend_forecast:
+        forecast_str = "\n".join(f"- {k}: {v}" for k, v in ctx.trend_forecast.items())
+        sections.append(f"## LSTM volatility forecast\n{forecast_str}")
+
+    # Comparison data (portfolio changed)
+    if ctx.portfolio_changed and ctx.previous_metrics:
+        prev_str = "\n".join(f"- {k}: {v}" for k, v in ctx.previous_metrics.items())
+        sections.append(f"## Previous portfolio metrics (BEFORE change)\n{prev_str}")
+
+        if ctx.previous_contributions:
+            prev_contrib = "\n".join(
+                f"- {k}: {v:.1%}" if isinstance(v, float) else f"- {k}: {v}"
+                for k, v in ctx.previous_contributions.items()
+            )
+            sections.append(f"## Previous risk contributions\n{prev_contrib}")
+
+        if ctx.previous_risk_level:
+            prev_label = ctx.previous_risk_level.get("label", "Unknown")
+            prev_conf = ctx.previous_risk_level.get("confidence", 0)
+            sections.append(
+                f"## Previous NN classification\n"
+                f"Label: {prev_label} (confidence: {prev_conf:.0%})"
+            )
+
+        sections.append(
+            "## MODE: COMPARISON\n"
+            "The user changed their portfolio. Compare BEFORE vs AFTER.\n"
+            "Highlight what improved, what worsened, and the tradeoffs."
+        )
+
+    # RAG context
+    if ctx.company_context:
+        sections.append(f"## Company context (from SEC filings)\n{ctx.company_context}")
+
+    if ctx.educational_context:
+        sections.append(f"## Educational context (from knowledge base)\n{ctx.educational_context}")
+
+    # Concept name
+    if ctx.concept_name:
+        sections.append(f"## Concept to explain\n{ctx.concept_name}")
+
+    # Chat history (for follow-up)
+    if ctx.chat_history:
+        history_lines = []
+        for msg in ctx.chat_history[-6:]:
+            role = msg["role"].upper()
+            content = msg["content"]
+            if len(content) > 300:
+                content = content[:300] + "..."
+            history_lines.append(f"[{role}]: {content}")
+        sections.append(f"## Recent conversation\n" + "\n".join(history_lines))
+
+    return "\n\n".join(sections)
+
+
+# ---------------------------------------------------------------------------
+# Generate explanation
+# ---------------------------------------------------------------------------
+def generate_explanation(
+    ctx: ExplanationContext,
+    client: Optional[genai.Client] = None,
+) -> str:
+    """
+    Generate a natural language explanation based on the ExplanationContext.
+    Uses Gemini 2.5 Flash for richer reasoning than Flash-Lite.
+
+    Rate limit errors (429) are re-raised for key rotation handling.
+
+    Parameters
+    ----------
+    ctx : ExplanationContext
+        All data needed for the explanation, assembled by the orchestrator.
+    client : genai.Client | None
+        Gemini client. If None, creates one from env var.
+
+    Returns
+    -------
+    str
+        The generated explanation text.
+    """
+    if client is None:
+        client = genai.Client()
+
+    prompt = _build_explanation_prompt(ctx)
+
+    try:
+        response = client.models.generate_content(
+            model=EXPLANATION_MODEL,
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                system_instruction=EXPLAIN_SYSTEM_PROMPT,
+                temperature=0.7,  # some creativity for natural explanations
+                max_output_tokens=2048,
+            ),
+        )
+    except Exception as e:
+        # Let rate limit errors bubble up for key rotation
+        error_str = str(e).lower()
+        error_code = getattr(e, "code", None)
+        is_rate_limit = (
+            error_code == 429
+            or "429" in error_str
+            or "resource_exhausted" in error_str
+            or "rate_limit_exceeded" in error_str
+            or "quota" in error_str
+        )
+        if is_rate_limit:
+            raise
+
+        logger.error("Explanation generation failed: %s", e)
+        return (
+            "I'm sorry, I encountered an error generating the explanation. "
+            "Please try again."
+        )
+
+    return response.text
