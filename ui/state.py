@@ -14,6 +14,7 @@ def initialize_session_state():
         "num_stocks": 1,
         "portfolio_ready": False,
         "chat_history": [],
+        "full_chat_history": [],
         "cache": empty_cache(),
         "portfolio_messages": [],
         "portfolio_history": [],
@@ -32,9 +33,6 @@ def initialize_session_state():
             "role": "assistant",
             "content": "Please fill in your portfolio before asking me questions!"
         })
-    
-    if not st.session_state.chat_history:
-        st.session_state.chat_history = []
 
 
 def update_status_message():
@@ -123,3 +121,35 @@ def snapshot_portfolio():
 
     # keep only newest 5
     st.session_state.portfolio_history = history[:5]
+
+
+def add_portfolio_summary_message():
+    st.session_state.full_chat_history.append({
+        "role": "assistant",
+        "content": summary_message()
+    })
+
+def summary_message():
+    cache = st.session_state.cache
+    history = st.session_state.portfolio_history
+    portfolio = st.session_state.portfolio
+
+    if cache.get("metrics") is None:
+        return "No results stored. Please ask a question first."
+
+    text = []
+
+    text.append("Current Portfolio:")
+    text.append(f"\nTickers: {', '.join(portfolio['tickers'])}")
+    text.append(f", Weights: {', '.join(str(w) for w in portfolio['weights'])}")
+    text.append(f", Investment: {portfolio['investment_amount']}")
+
+    text.append(f"\nMetrics: {cache['metrics']}")
+    text.append(f"\nRisk Level: {cache['risk_level']}")
+
+    if history:
+        text.append("\nPrevious Portfolios:")
+        for i, snap in enumerate(history, 1):
+            text.append(f"Portfolio {i}: {snap['portfolio']['tickers']}")
+
+    return "\n".join(text)

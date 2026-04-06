@@ -37,6 +37,8 @@ if user_query:
         "content": user_query
     })
 
+    st.session_state.full_chat_history.append({"role": "user", "content": user_query})
+
     intent = classify_intent(
         message=user_query,
         recent_history=st.session_state.chat_history,
@@ -54,6 +56,16 @@ if user_query:
     response = workflow.content
 
     st.session_state.chat_history.append({
+        "role": "assistant",
+        "content": response,
+        "metadata": {
+            "intent": "intent",
+            "tools_used": ["tool1"],        # to be updated
+            "models_called": ["model1"]     # to be updated
+        }
+    })
+
+    st.session_state.full_chat_history.append({
         "role": "assistant",
         "content": response,
         "metadata": {

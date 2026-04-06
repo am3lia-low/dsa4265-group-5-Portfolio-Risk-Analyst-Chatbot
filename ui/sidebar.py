@@ -1,6 +1,6 @@
 import streamlit as st
 from collections import defaultdict
-from ui.state import update_status_message, clear_cache, snapshot_portfolio
+from ui.state import update_status_message, clear_cache, snapshot_portfolio, add_portfolio_summary_message
 from agent_tools.data_tools.valid_tickers import valid_tickers
 from agent_tools.data_tools.valid_weights import valid_weights
 
@@ -151,6 +151,11 @@ def render_sidebar():
 
         return portfolio, investment_amount
 
+
+    if len(st.session_state.full_chat_history) >= 2:
+        if st.sidebar.button("Summarise Results"):
+            add_portfolio_summary_message()
+            st.rerun()
 
 
 def portfolio_checker(portfolio, investment_amount):
