@@ -43,13 +43,16 @@ if user_query:
         portfolio_changed=st.session_state.portfolio_updated,
         client=None,
     )
-    print(intent)
+    if intent.secondary_intent:
+        print(f"intent detected {intent.primary_intent} and {intent.secondary_intent}")
 
     workflow = route_and_execute(
         intent,
-        portfolio=st.session_state.current_portfolio,
+        portfolio=st.session_state.portfolio,
+        is_first_portfolio=len(st.session_state.all_portfolios) == 1,
         portfolio_changed=st.session_state.portfolio_updated,
         recent_history=st.session_state.chat_history,
+        cache = st.session_state.cache,
     )
     response = workflow.content
 
@@ -63,7 +66,13 @@ if user_query:
         }
     })
 
-    update_cache()  # to be updated
+    update_cache(
+        returns_df=workflow.cache.get("returns_df"),
+        metrics=workflow.cache.get("metrics"),
+        risk_level=workflow.cache.get("risk_level"),
+        trend_forecast=workflow.cache.get("trend_forecast"),
+        rag_context=workflow.cache.get("rag_context"),
+    )
     st.session_state.portfolio_updated = False
 
     st.rerun()

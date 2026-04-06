@@ -597,6 +597,11 @@ class ExplanationContext:
     # --- Concept (concept_explanation) ---
     concept_name: Optional[str] = None
 
+    # --- Secondary intent (when user asked two things at once) ---
+    secondary_intent: Optional[Intent] = None
+    secondary_concept: Optional[str] = None
+    secondary_requested_metrics: Optional[list[str]] = None
+
 
 # ---------------------------------------------------------------------------
 # Explanation system prompt
@@ -674,6 +679,12 @@ Be friendly and helpful:
 - Greetings: respond warmly, mention what you can do
 - Capabilities: list the types of analysis available
 - Off-topic: gently redirect to portfolio risk analysis
+
+### dual-intent (secondary_intent present)
+Address both requests in a single coherent response:
+1. Lead with the primary intent's answer
+2. Use a clear section break (e.g. "---") before the secondary answer
+3. Do not repeat shared data (e.g. portfolio details, metrics already shown)
 """
 
 
@@ -775,6 +786,15 @@ def _build_explanation_prompt(ctx: ExplanationContext) -> str:
     # Concept name
     if ctx.concept_name:
         sections.append(f"## Concept to explain\n{ctx.concept_name}")
+
+    # Secondary intent
+    if ctx.secondary_intent:
+        parts = [f"## Secondary request\nIntent: {ctx.secondary_intent.value}"]
+        if ctx.secondary_concept:
+            parts.append(f"Concept: {ctx.secondary_concept}")
+        if ctx.secondary_requested_metrics:
+            parts.append(f"Metrics: {', '.join(ctx.secondary_requested_metrics)}")
+        sections.append("\n".join(parts))
 
     # Chat history (for follow-up)
     if ctx.chat_history:

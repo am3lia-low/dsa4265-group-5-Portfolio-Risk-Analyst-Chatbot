@@ -67,11 +67,8 @@ def compute_portfolio_hash(portfolio=None):
 
 
 def update_cache(
-    price_data=None,
     returns_df=None,
-    cov_matrix=None,
     metrics=None,
-    risk_contributions=None,
     risk_level=None,
     trend_forecast=None,
     rag_context=None
@@ -79,9 +76,7 @@ def update_cache(
     st.session_state.cache = {
         "portfolio_hash": compute_portfolio_hash(),
         "returns_df": returns_df, # i removed price data cos i think returns should suffice!
-        "cov_matrix": cov_matrix,
         "metrics": metrics,
-        "risk_contributions": risk_contributions,
         "risk_level": risk_level,
         "trend_forecast": trend_forecast,
         "rag_context": rag_context,
@@ -92,11 +87,8 @@ def update_cache(
 def empty_cache():
     return {
         "portfolio_hash": None,
-        "price_data": None,
         "returns_df": None,
-        "cov_matrix": None,
         "metrics": None,
-        "risk_contributions": None,
         "risk_level": None,
         "trend_forecast": None,
         "rag_context": None,

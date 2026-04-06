@@ -26,6 +26,7 @@ Model:
 
 """
 
+import os
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
@@ -65,7 +66,11 @@ class LSTMModel(nn.Module):
 
         # Output heads
         self.volatility_head = nn.Linear(hidden_size2, 1)   # regression
-        self.direction_head = nn.Linear(hidden_size2, 1)    # binary classification
+        self.direction_head = nn.Sequential(
+            nn.Linear(hidden_size2, hidden_size2),
+            nn.ReLU(),
+            nn.Linear(hidden_size2, 1)
+        )   # binary classification
 
         bce_loss = nn.BCEWithLogitsLoss()
 
@@ -158,7 +163,7 @@ def portfolio_to_lstm_input(portfolio, window=60):
             recent_window - np.mean(recent_window)
                 ) / (np.std(recent_window) + 1e-8)
         
-        X_input = recent_window.reshape(1, window, 1)
+        X_input = recent_window.values.reshape(1, window, 1)
 
         X_inputs.append(X_input)
         return X_inputs
@@ -206,7 +211,8 @@ def future_portfolio_risk(portfolio, window=60):
         X_input = torch.tensor(X_input[0], dtype=torch.float32)  # unwrap list → (1, window, 1)
         
     # Load the saved state_dict
-    model.load_state_dict(torch.load('../LSTM/model_weights.pth'))
+    _weights_path = os.path.join(os.path.dirname(__file__), 'model_weights.pth')
+    model.load_state_dict(torch.load(_weights_path))
 
     # Set the model to 
     model.eval()

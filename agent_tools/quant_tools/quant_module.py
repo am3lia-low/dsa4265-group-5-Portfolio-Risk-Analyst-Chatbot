@@ -400,7 +400,6 @@ def calculate_all_metrics(
     returns: pd.DataFrame,
     # prices: pd.DataFrame, # does not seem to be used!
     weights: list,
-    cov_matrix: pd.DataFrame,
     rf: float = 0.04,
 ) -> dict:
     """
@@ -414,8 +413,6 @@ def calculate_all_metrics(
         Daily simple returns. Rows = dates, columns = tickers.
     weights : list
         Asset weights. Must sum to 1.0. Order must match columns in returns/prices.
-    cov_matrix : pd.DataFrame
-        Pre-computed annualised covariance matrix.
     rf : float
         Annualised risk-free rate. Default 0.04 (4%).
 
@@ -433,9 +430,12 @@ def calculate_all_metrics(
     # checking if SPY in portfolio
     #   (if yes, keep returns as is)
     #   (if no, drop the column)
+
     spy_returns = returns['SPY']
     if len(weights) == (len(returns.columns)-1): # assuming the missing weight, is infact, bcos of SPY
         returns = returns.drop(columns="SPY")
+
+    cov_matrix = calculate_covariance_matrix(returns)
 
     metrics = {
         "portfolio_volatility": calculate_portfolio_volatility(cov_matrix, weights),
