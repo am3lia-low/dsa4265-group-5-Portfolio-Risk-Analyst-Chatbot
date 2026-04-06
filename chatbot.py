@@ -37,6 +37,8 @@ if user_query:
         "content": user_query
     })
 
+    st.session_state.full_chat_history.append({"role": "user", "content": user_query})
+
     intent = classify_intent(
         message=user_query,
         recent_history=st.session_state.chat_history,
@@ -66,6 +68,7 @@ if user_query:
         }
     })
 
+<<<<<<< HEAD
     update_cache(
         returns_df=workflow.cache.get("returns_df"),
         metrics=workflow.cache.get("metrics"),
@@ -73,6 +76,19 @@ if user_query:
         trend_forecast=workflow.cache.get("trend_forecast"),
         rag_context=workflow.cache.get("rag_context"),
     )
+=======
+    st.session_state.full_chat_history.append({
+        "role": "assistant",
+        "content": response,
+        "metadata": {
+            "intent": "intent",
+            "tools_used": ["tool1"],        # to be updated
+            "models_called": ["model1"]     # to be updated
+        }
+    })
+
+    update_cache()  # to be updated
+>>>>>>> 61849a6d6d0999702e0146ad2b56573631d3b455
     st.session_state.portfolio_updated = False
 
     st.rerun()
