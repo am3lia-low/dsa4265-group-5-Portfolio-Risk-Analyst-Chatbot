@@ -227,7 +227,6 @@ def future_portfolio_risk(portfolio, window=60):
         prob_up = torch.sigmoid(dir_pred)
         preds = (prob_up > threshold).float()
 
-        print(preds)
         direction = "Up" if preds.item() == 1.0 else "Down"
 
     # Confidence = probability distance from 0.5

@@ -421,6 +421,10 @@ def route_and_execute(
         "route_and_execute | primary=%s | secondary=%s | portfolio_changed=%s | is_first=%s",
         primary, secondary, portfolio_changed, is_first_portfolio,
     )
+    print(f"\n[route_and_execute]")
+    print(f"  intent:            {primary.value}" + (f" + {secondary.value}" if secondary else ""))
+    print(f"  portfolio:         {portfolio['tickers']}")
+    print(f"  portfolio_changed: {portfolio_changed} | is_first_portfolio: {is_first_portfolio}")
 
     # Working cache starts from existing cache so unchanged data is preserved
     working_cache = dict(old_cache)
@@ -438,6 +442,9 @@ def route_and_execute(
     risk_stale    = portfolio_changed or working_cache.get("risk_level") is None
     lstm_stale    = portfolio_changed or working_cache.get("trend_forecast") is None
 
+    print(f"  tools needed:      metrics={needs_metrics} | risk={needs_risk} | lstm={needs_lstm}")
+    print(f"  cache stale:       metrics={metrics_stale} | risk={risk_stale} | lstm={lstm_stale}")
+
     # ------------------------------------------------------------------
     # 1. Fetch price data + compute metrics (if needed and stale)
     # ------------------------------------------------------------------
@@ -445,6 +452,7 @@ def route_and_execute(
     metric_analysis = None
 
     if needs_metrics and metrics_stale:
+        print(f"\n  [1/3] fetching price data ({portfolio['tickers']}, 5yr)...")
         logger.info("Fetching price data and computing metrics...")
         END    = datetime.date.today()
         START  = END.replace(year=END.year - 5)
@@ -455,24 +463,35 @@ def route_and_execute(
         )
         returns = calculate_returns(prices, method="simple")
         working_cache["returns_df"] = returns
+        print(f"        price data fetched: {returns.shape[0]} rows x {returns.shape[1]} assets")
 
+        print(f"        calculating quantitative metrics...")
         all_metrics     = calculate_all_metrics(returns=returns, weights=portfolio["weights"])
+        print(f"        metrics computed: {list(all_metrics.keys())}")
+
+        print(f"        benchmarking metrics...")
         metric_analysis = metric_benchmarks(all_metrics)
         working_cache["metrics"] = {
             "all_metrics":     all_metrics,
             "metric_analysis": metric_analysis,
         }
         logger.info("Metrics computed successfully.")
+        print(f"        done.")
 
     elif needs_metrics and not metrics_stale:
+        print(f"\n  [1/3] using cached metrics (skipping fetch + computation)")
         logger.info("Using cached metrics.")
         all_metrics     = working_cache["metrics"]["all_metrics"]
         metric_analysis = working_cache["metrics"]["metric_analysis"]
+
+    else:
+        print(f"\n  [1/3] metrics not needed for intent: {primary.value}")
 
     # ------------------------------------------------------------------
     # 2. Risk classification (if needed and stale)
     # ------------------------------------------------------------------
     if needs_risk and risk_stale and all_metrics is not None:
+        print(f"\n  [2/3] running risk classification (neural network scoring)...")
         logger.info("Classifying portfolio risk...")
         raw_risk = current_portfolio_risk_tool(portfolio, all_metrics)
         # Align keys to ExplanationContext expectations: label + confidence
@@ -481,27 +500,42 @@ def route_and_execute(
             "confidence": raw_risk.get("risk_score"),
         }
         logger.info("Risk classification: %s", working_cache["risk_level"]["label"])
+        print(f"        risk level: {working_cache['risk_level']['label']} "
+              f"(score: {working_cache['risk_level']['confidence']:.4f})")
 
     elif needs_risk and not risk_stale:
+        print(f"\n  [2/3] using cached risk level: {working_cache['risk_level']['label']}")
         logger.info("Using cached risk level.")
+
+    else:
+        print(f"\n  [2/3] risk classification not needed for intent: {primary.value}")
 
     # ------------------------------------------------------------------
     # 3. LSTM volatility forecast (if needed and stale)
     # ------------------------------------------------------------------
     if needs_lstm and lstm_stale:
+        print(f"\n  [3/3] running LSTM volatility forecast (window={FUTURE_VOL_WINDOW} days)...")
         logger.info("Running LSTM volatility forecast...")
         working_cache["trend_forecast"] = future_portfolio_risk(portfolio, FUTURE_VOL_WINDOW)
-        logger.info(
-            "LSTM forecast complete: direction=%s",
-            working_cache["trend_forecast"].get("predicted_direction"),
-        )
+        forecast = working_cache["trend_forecast"]
+        logger.info("LSTM forecast complete: direction=%s", forecast.get("predicted_direction"))
+        print(f"        direction: {forecast['predicted_direction']} | "
+              f"prob_up: {forecast['prob_up']:.2%} | "
+              f"confidence: {forecast['confidence']:.2%}")
 
     elif needs_lstm and not lstm_stale:
+        forecast = working_cache["trend_forecast"]
+        print(f"\n  [3/3] using cached LSTM forecast: "
+              f"{forecast['predicted_direction']} (confidence: {forecast['confidence']:.2%})")
         logger.info("Using cached LSTM forecast.")
+
+    else:
+        print(f"\n  [3/3] LSTM forecast not needed for intent: {primary.value}")
 
     # ------------------------------------------------------------------
     # 4. Build primary response body
     # ------------------------------------------------------------------
+    print(f"\n  [response] building primary response ({primary.value})...")
     logger.info("Generating primary response for intent: %s", primary)
     primary_body = _body_for_intent(
         intent=primary,
@@ -520,6 +554,7 @@ def route_and_execute(
     # ------------------------------------------------------------------
     content = primary_body
     if secondary:
+        print(f"  [response] building secondary response ({secondary.value})...")
         logger.info("Generating secondary response for intent: %s", secondary)
         secondary_body = _body_for_intent(
             intent=secondary,
@@ -534,6 +569,7 @@ def route_and_execute(
         )
         content = f"{primary_body}\n\n---\n\n## Additionally\n\n{secondary_body}"
 
+    print(f"  [done] route_and_execute complete\n")
     logger.info("route_and_execute complete.")
 
     return WorkflowResult(

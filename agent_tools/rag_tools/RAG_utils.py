@@ -40,15 +40,28 @@ import importlib
 import warnings
 from typing import Any
  
+import logging
 import numpy as np
 import pandas as pd
 import chromadb
 from sentence_transformers import SentenceTransformer
 from rank_bm25 import BM25Okapi
- 
+
 from pathlib import Path
 from dotenv import load_dotenv
 warnings.filterwarnings("ignore")
+
+# Suppress verbose output from transformers/sentence-transformers during model load
+logging.getLogger("sentence_transformers").setLevel(logging.ERROR)
+logging.getLogger("transformers").setLevel(logging.ERROR)
+logging.getLogger("huggingface_hub").setLevel(logging.ERROR)
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+os.environ.setdefault("HF_HUB_DISABLE_IMPLICIT_TOKEN", "1")  # suppresses unauthenticated HF Hub warning
+os.environ.setdefault("TRANSFORMERS_NO_ADVISORY_WARNINGS", "1")
+
+import transformers
+transformers.utils.logging.set_verbosity_error()
+transformers.utils.logging.disable_progress_bar()  # suppresses "Loading weights" progress bar
 
 # ── Retrieve FRED_API_KEY ──────────────────────────────────────────────────────────
 # Automatically find the .env in the main folder

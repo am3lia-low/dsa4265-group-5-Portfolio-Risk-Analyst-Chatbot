@@ -68,15 +68,6 @@ if user_query:
         }
     })
 
-<<<<<<< HEAD
-    update_cache(
-        returns_df=workflow.cache.get("returns_df"),
-        metrics=workflow.cache.get("metrics"),
-        risk_level=workflow.cache.get("risk_level"),
-        trend_forecast=workflow.cache.get("trend_forecast"),
-        rag_context=workflow.cache.get("rag_context"),
-    )
-=======
     st.session_state.full_chat_history.append({
         "role": "assistant",
         "content": response,
@@ -87,8 +78,13 @@ if user_query:
         }
     })
 
-    update_cache()  # to be updated
->>>>>>> 61849a6d6d0999702e0146ad2b56573631d3b455
+    update_cache(
+        returns_df=workflow.cache.get("returns_df"),
+        metrics=workflow.cache.get("metrics"),
+        risk_level=workflow.cache.get("risk_level"),
+        trend_forecast=workflow.cache.get("trend_forecast"),
+        rag_context=workflow.cache.get("rag_context"),
+    )
     st.session_state.portfolio_updated = False
 
     st.rerun()
