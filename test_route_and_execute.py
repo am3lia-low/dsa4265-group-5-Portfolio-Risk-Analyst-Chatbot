@@ -126,6 +126,7 @@ def test_first_portfolio_full_analysis():
 
     result = route_and_execute(
         intent,
+        user_query="Give me a full analysis of my portfolio",
         portfolio=MOCK_PORTFOLIO,
         is_first_portfolio=True,
         portfolio_changed=True,
@@ -160,6 +161,7 @@ def test_cache_hit_full_analysis(warm_cache: dict):
 
     result = route_and_execute(
         intent,
+        user_query="Give me a full analysis of my portfolio",
         portfolio=MOCK_PORTFOLIO,
         is_first_portfolio=False,
         portfolio_changed=False,
@@ -193,6 +195,7 @@ def test_portfolio_changed_specific_metric():
 
     result = route_and_execute(
         intent,
+        user_query="What is my Sharpe ratio and max drawdown?",
         portfolio=MOCK_PORTFOLIO,
         is_first_portfolio=False,
         portfolio_changed=True,
@@ -230,6 +233,7 @@ def test_concept_no_computation():
 
     result = route_and_execute(
         intent,
+        user_query="What is the Sharpe ratio?",
         portfolio=MOCK_PORTFOLIO,
         is_first_portfolio=True,
         portfolio_changed=True,
@@ -271,6 +275,7 @@ def test_dual_intent_specific_metric_and_concept():
 
     result = route_and_execute(
         intent,
+        user_query="What is my max drawdown and what does beta mean?",
         portfolio=MOCK_PORTFOLIO,
         is_first_portfolio=True,
         portfolio_changed=True,
@@ -289,6 +294,143 @@ def test_dual_intent_specific_metric_and_concept():
 
 
 # ---------------------------------------------------------------------------
+# Test 6: follow_up with prior history
+#   - chat_history stored in cache
+#   - Full Previous Response and Last 6 Turns sections present in content
+#   - Existing cache (metrics/risk) preserved
+# ---------------------------------------------------------------------------
+
+PRIOR_ASSISTANT_RESPONSE = (
+    "Your portfolio has a Medium risk level with annualised volatility of 18.3%. "
+    "The Sharpe ratio is 0.82, indicating moderate risk-adjusted returns. "
+    "AAPL contributes the most to overall risk at 52%."
+)
+
+FOLLOW_UP_HISTORY = [
+    {"role": "user", "content": "Give me a full analysis of my portfolio"},
+    {"role": "assistant", "content": PRIOR_ASSISTANT_RESPONSE},
+    {"role": "user", "content": "Can you elaborate on what you said?"},
+]
+
+
+def test_follow_up_with_history(warm_cache: dict):
+    print("\n" + "="*60)
+    print("TEST 6: follow_up with prior history — chat_history cached, content labelled")
+    print("="*60)
+
+    intent = make_intent(Intent.FOLLOW_UP)
+    query = "Can you elaborate on what you said?"
+    print(f"  query:   \"{query}\"")
+    print(f"  history: {len(FOLLOW_UP_HISTORY)} messages (last assistant: {PRIOR_ASSISTANT_RESPONSE[:60]}...)")
+
+    result = route_and_execute(
+        intent,
+        user_query=query,
+        portfolio=MOCK_PORTFOLIO,
+        is_first_portfolio=False,
+        portfolio_changed=False,
+        recent_history=FOLLOW_UP_HISTORY,
+        cache=warm_cache,
+    )
+
+    check_result(result, Intent.FOLLOW_UP)
+
+    assert result.cache.get("chat_history") is not None, \
+        "chat_history missing from cache for follow_up"
+    assert len(result.cache["chat_history"]) == len(FOLLOW_UP_HISTORY), \
+        f"chat_history length mismatch: expected {len(FOLLOW_UP_HISTORY)}, got {len(result.cache['chat_history'])}"
+    print(f"  OK: chat_history stored ({len(result.cache['chat_history'])} turns)")
+
+    assert "## Full Previous Response" in result.content, \
+        "'## Full Previous Response' section missing from content"
+    assert "## Last 6 Turns of Conversation" in result.content, \
+        "'## Last 6 Turns of Conversation' section missing from content"
+    print("  OK: content sections labelled correctly")
+
+    assert "volatility" in result.content.lower() or "sharpe" in result.content.lower(), \
+        "prior assistant response not surfaced in content"
+    print("  OK: prior response content present")
+
+    # Existing cache should be preserved
+    assert result.cache.get("metrics") is not None,    "metrics wiped on follow_up"
+    assert result.cache.get("risk_level") is not None, "risk_level wiped on follow_up"
+    print("  OK: existing cache preserved")
+
+
+# ---------------------------------------------------------------------------
+# Test 7: follow_up with no history
+#   - Expected: fallback message, no chat_history in cache
+# ---------------------------------------------------------------------------
+
+def test_follow_up_no_history():
+    print("\n" + "="*60)
+    print("TEST 7: follow_up with empty history — fallback message returned")
+    print("="*60)
+
+    intent = make_intent(Intent.FOLLOW_UP)
+    query = "Can you explain what you just said?"
+    print(f"  query:   \"{query}\"")
+    print(f"  history: empty")
+
+    result = route_and_execute(
+        intent,
+        user_query=query,
+        portfolio=MOCK_PORTFOLIO,
+        is_first_portfolio=False,
+        portfolio_changed=False,
+        recent_history=[],
+        cache={},
+    )
+
+    check_result(result, Intent.FOLLOW_UP)
+    assert "no earlier answer" in result.content.lower(), \
+        "expected fallback message when history is empty"
+    print("  OK: fallback message returned when no prior history")
+
+
+# ---------------------------------------------------------------------------
+# Test 8: follow_up with concept-signal query — RAG should trigger
+#   - Query contains "what" → _CONCEPT_SIGNALS match
+#   - Expected: rag_context populated in cache, Reference material in content
+# ---------------------------------------------------------------------------
+
+def test_follow_up_concept_rag():
+    print("\n" + "="*60)
+    print("TEST 8: follow_up with concept-signal query — RAG triggered")
+    print("="*60)
+
+    history = [
+        {"role": "assistant", "content": "Your Sharpe ratio is 0.82."},
+        {"role": "user", "content": "What does the Sharpe ratio mean exactly?"},
+    ]
+    intent = make_intent(Intent.FOLLOW_UP)
+    query = "What does the Sharpe ratio mean exactly?"
+    print(f"  query:   \"{query}\"")
+    print(f"  concept signals present: {set(query.lower().split()) & {'what', 'mean', 'means'}}")
+
+    result = route_and_execute(
+        intent,
+        user_query=query,
+        portfolio=MOCK_PORTFOLIO,
+        is_first_portfolio=False,
+        portfolio_changed=False,
+        recent_history=history,
+        cache={},
+    )
+
+    check_result(result, Intent.FOLLOW_UP)
+    assert "rag_context" in result.cache, \
+        "rag_context key missing from cache — RAG should have been attempted for concept-signal query"
+    print(f"  OK: rag_context key present in cache (value={'chunks returned' if result.cache['rag_context'] else 'no chunks found'})")
+    if result.cache["rag_context"]:
+        assert "Reference material" in result.content, \
+            "RAG chunks returned but not surfaced in content"
+        print("  OK: Reference material present in content")
+    else:
+        print("  NOTE: RAG returned no chunks for this query (knowledge base may not cover it)")
+
+
+# ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
 
@@ -297,16 +439,19 @@ if __name__ == "__main__":
     failed = 0
 
     tests = [
-        ("test_first_portfolio_full_analysis",        None),
-        ("test_cache_hit_full_analysis",              None),   # warm_cache filled after test 1
-        ("test_portfolio_changed_specific_metric",    None),
-        ("test_concept_no_computation",               None),
-        ("test_dual_intent_specific_metric_and_concept", None),
+        "test_first_portfolio_full_analysis",
+        "test_cache_hit_full_analysis",
+        "test_portfolio_changed_specific_metric",
+        "test_concept_no_computation",
+        "test_dual_intent_specific_metric_and_concept",
+        "test_follow_up_with_history",
+        "test_follow_up_no_history",
+        "test_follow_up_concept_rag",
     ]
 
     warm_cache = {}
 
-    for name, _ in tests:
+    for name in tests:
         try:
             if name == "test_first_portfolio_full_analysis":
                 warm_cache = test_first_portfolio_full_analysis()
@@ -318,11 +463,19 @@ if __name__ == "__main__":
                 test_concept_no_computation()
             elif name == "test_dual_intent_specific_metric_and_concept":
                 test_dual_intent_specific_metric_and_concept()
+            elif name == "test_follow_up_with_history":
+                test_follow_up_with_history(warm_cache)
+            elif name == "test_follow_up_no_history":
+                test_follow_up_no_history()
+            elif name == "test_follow_up_concept_rag":
+                test_follow_up_concept_rag()
 
             print(f"\nPASS: {name}")
             passed += 1
         except Exception as e:
+            import traceback
             print(f"\nFAIL: {name}: {e}")
+            traceback.print_exc()
             failed += 1
 
     print(f"\n{'='*60}")

@@ -117,6 +117,7 @@ def test_full_pipeline_first_portfolio():
     # Stage 2: route_and_execute
     result = route_and_execute(
         intent,
+        user_query=query,
         portfolio=MOCK_PORTFOLIO,
         is_first_portfolio=True,
         portfolio_changed=True,
@@ -154,7 +155,7 @@ def test_full_pipeline_followup(warm_cache: dict):
     print("TEST 3: full pipeline — follow-up query, cache warm")
     print("="*60)
 
-    query = "Can you explain what you just told me about volatility?"
+    query = "Can you say more about what you just told me?"
     history = [{"role": "assistant", "content": "Your portfolio has a Medium risk level with annualised volatility of 18%."}]
 
     print(f"  Query: \"{query}\"")
@@ -173,6 +174,7 @@ def test_full_pipeline_followup(warm_cache: dict):
 
     result = route_and_execute(
         intent,
+        user_query=query,
         portfolio=MOCK_PORTFOLIO,
         is_first_portfolio=False,
         portfolio_changed=False,
@@ -185,7 +187,19 @@ def test_full_pipeline_followup(warm_cache: dict):
     # Cache should still be intact
     assert result.cache.get("metrics") is not None,    "cache was wiped on follow-up"
     assert result.cache.get("risk_level") is not None, "cache was wiped on follow-up"
-    print(f"\n  OK: cache preserved on follow-up")
+    print(f"  OK: existing cache preserved")
+
+    if intent.primary_intent == Intent.FOLLOW_UP:
+        assert result.cache.get("chat_history") is not None, "chat_history missing from cache"
+        assert len(result.cache["chat_history"]) == len(history), "chat_history length mismatch"
+        print(f"  OK: chat_history stored ({len(result.cache['chat_history'])} turns)")
+        assert "## Full Previous Response" in result.content, \
+            "'## Full Previous Response' section missing"
+        assert "## Last 6 Turns of Conversation" in result.content, \
+            "'## Last 6 Turns of Conversation' section missing"
+        print(f"  OK: content sections labelled correctly")
+    else:
+        print(f"  WARN: classifier returned {intent.primary_intent.value} instead of follow_up — skipping follow_up-specific assertions")
 
 
 # ---------------------------------------------------------------------------
@@ -219,6 +233,7 @@ def test_full_pipeline_specific_metric():
 
     result = route_and_execute(
         intent,
+        user_query=query,
         portfolio=MOCK_PORTFOLIO,
         is_first_portfolio=True,
         portfolio_changed=True,
@@ -259,6 +274,7 @@ def test_full_pipeline_dual_intent():
 
     result = route_and_execute(
         intent,
+        user_query=query,
         portfolio=MOCK_PORTFOLIO,
         is_first_portfolio=True,
         portfolio_changed=True,

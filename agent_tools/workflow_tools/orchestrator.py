@@ -80,6 +80,7 @@ def _rag_block(intent: str, query: str, top_k: int = 6) -> Optional[str]:
         logger.debug("RAG_utils not available", exc_info=True)
         return None
 
+    print(f"  [RAG] intent={intent!r} | query={query!r}")
     try:
         result = retrieve_context(intent=intent, query=query, top_k=top_k, save_log=False, silent=True)
     except Exception as exc:
@@ -206,6 +207,7 @@ def _non_rag_lines(cache: dict) -> list[str]:
 # ---------------------------------------------------------------------------
 
 def _full_analysis_markdown(
+    user_query: str,
     portfolio: dict,
     portfolio_changed: bool,
     is_first_portfolio: bool,
@@ -229,7 +231,7 @@ def _full_analysis_markdown(
     tickers_str = " ".join(portfolio["tickers"])
     rag = _rag_block(
         _RAG_INTENT_FULL,
-        f"{tickers_str} portfolio risk concentration rebalancing strategy",
+        f"{user_query}\nTickers used:{tickers_str}",
     )
     working_cache["rag_context"] = rag
     if rag:
@@ -239,7 +241,7 @@ def _full_analysis_markdown(
 
 
 def _specific_metric_markdown(
-    portfolio: dict,
+    user_query: str,
     cache: dict,
     extracted_metrics: Optional[list[str]],
 ) -> str:
@@ -282,14 +284,14 @@ def _specific_metric_markdown(
 
     logger.info("     running RAG retrieval for specific metrics...")
     q = " ".join(extracted_metrics[:3])
-    rag = _rag_block(_RAG_INTENT_CONCEPT, f"define explain {q}")
+    rag = _rag_block(_RAG_INTENT_CONCEPT, f"{user_query}")
     if rag:
         lines.extend(["", rag])
 
     return "\n".join(lines)
 
 
-def _trend_markdown(portfolio: dict, cache: dict) -> str:
+def _trend_markdown(user_query: str, portfolio: dict, cache: dict) -> str:
     future_risk = cache.get("trend_forecast")
     if not future_risk:
         return (
@@ -312,7 +314,7 @@ def _trend_markdown(portfolio: dict, cache: dict) -> str:
     tickers_str = " ".join(portfolio["tickers"])
     rag = _rag_block(
         _RAG_INTENT_TREND,
-        f"{tickers_str} volatility regime outlook forecast",
+        f"{user_query}\nTickers used:{tickers_str}",
     )
     if rag:
         lines.extend(["", rag])
@@ -320,10 +322,10 @@ def _trend_markdown(portfolio: dict, cache: dict) -> str:
     return "\n".join(lines)
 
 
-def _concept_markdown(concept: Optional[str]) -> str:
+def _concept_markdown(user_query: str, concept: Optional[str]) -> str:
     label = (concept or "risk concept").strip()
     logger.info("     running RAG retrieval for concept: %s...", label)
-    rag = _rag_block(_RAG_INTENT_CONCEPT, label)
+    rag = _rag_block(_RAG_INTENT_CONCEPT, user_query)
 
     base = f"## {label}\n\n"
     if rag:
@@ -347,20 +349,46 @@ def _last_assistant_text(history: list[dict]) -> Optional[str]:
     return None
 
 
-def _follow_up_markdown(history: list[dict]) -> str:
+_CONCEPT_SIGNALS = {
+    "what", "why", "how", "explain", "mean", "means", "define",
+    "definition", "formula", "calculate", "work", "works", "understand",
+}
+
+
+def _follow_up_markdown(
+    user_query: str,
+    working_cache: dict,
+    history: list[dict],
+) -> str:
     prior = _last_assistant_text(history)
     if not prior:
         return (
             "There's no earlier answer to refer to. "
             "Ask for a metric or a full risk summary for this portfolio."
         )
-    head = prior[:900] + ("…" if len(prior) > 900 else "")
-    return (
-        "## Last Response\n\n"
-        f"{head}\n\n"
-        "What would you like clarified or expanded? "
-        "Naming a specific metric or risk angle helps."
-    )
+
+    # Conditional RAG — only if query touches concept-level knowledge
+    needs_rag = bool(set(user_query.lower().split()) & _CONCEPT_SIGNALS)
+    rag = None
+    if needs_rag:
+        logger.info("     follow-up: concept grounding detected, running RAG...")
+        print(f"  [follow-up] RAG triggered (concept grounding)")
+        rag = _rag_block(_RAG_INTENT_CONCEPT, user_query)
+        working_cache["rag_context"] = rag
+
+    full_prior = prior[:1000] + ("…" if len(prior) > 1000 else "")
+    lines: list[str] = [
+        "## Last 6 Turns of Conversation",
+        "(see chat_history in cache)",
+        "",
+        "## Full Previous Response",
+        "",
+        full_prior,
+    ]
+    if rag:
+        lines.extend(["", rag])
+
+    return "\n".join(lines)
 
 
 def _general_chat_markdown() -> str:
@@ -379,6 +407,7 @@ def _general_chat_markdown() -> str:
 
 def _body_for_intent(
     intent: Intent,
+    user_query: str,
     portfolio: dict,
     portfolio_changed: bool,
     is_first_portfolio: bool,
@@ -390,16 +419,16 @@ def _body_for_intent(
 ) -> str:
     if intent == Intent.FULL_ANALYSIS:
         return _full_analysis_markdown(
-            portfolio, portfolio_changed, is_first_portfolio, old_cache, working_cache,
+            user_query, portfolio, portfolio_changed, is_first_portfolio, old_cache, working_cache,
         )
     elif intent == Intent.SPECIFIC_METRIC:
-        return _specific_metric_markdown(portfolio, working_cache, extracted_metrics)
+        return _specific_metric_markdown(user_query, working_cache, extracted_metrics)
     elif intent == Intent.TREND_PREDICTION:
-        return _trend_markdown(portfolio, working_cache)
+        return _trend_markdown(user_query, portfolio, working_cache)
     elif intent == Intent.CONCEPT_EXPLANATION:
-        return _concept_markdown(extracted_concept)
+        return _concept_markdown(user_query, extracted_concept)
     elif intent == Intent.FOLLOW_UP:
-        return _follow_up_markdown(history)
+        return _follow_up_markdown(user_query, working_cache, history)
     elif intent == Intent.GENERAL_CHAT:
         return _general_chat_markdown()
     else:
@@ -412,6 +441,7 @@ def _body_for_intent(
 
 def route_and_execute(
     intent_result: IntentResult,
+    user_query: str,
     portfolio: dict,
     is_first_portfolio: bool,
     portfolio_changed: bool = False,
@@ -539,12 +569,20 @@ def route_and_execute(
         print(f"\n  [3/3] LSTM forecast not needed for intent: {primary.value}")
 
     # ------------------------------------------------------------------
-    # 4. Build primary response body
+    # 4. Store chat history for FOLLOW_UP (used by generate_explanation later)
     # ------------------------------------------------------------------
-    print(f"\n  [response] building primary response ({primary.value})...")
+    if primary == Intent.FOLLOW_UP or secondary == Intent.FOLLOW_UP:
+        working_cache["chat_history"] = history
+        print(f"\n  [4/4] chat_history stored ({len(history)} turns) for follow-up context")
+
+    # ------------------------------------------------------------------
+    # 5. Build primary response body
+    # ------------------------------------------------------------------
+    print(f"\n  [5a] building primary response ({primary.value})...")
     logger.info("Generating primary response for intent: %s", primary)
     primary_body = _body_for_intent(
         intent=primary,
+        user_query=user_query,
         portfolio=portfolio,
         portfolio_changed=portfolio_changed,
         is_first_portfolio=is_first_portfolio,
@@ -560,10 +598,11 @@ def route_and_execute(
     # ------------------------------------------------------------------
     content = primary_body
     if secondary:
-        print(f"  [response] building secondary response ({secondary.value})...")
+        print(f"  [5b] building secondary response ({secondary.value})...")
         logger.info("Generating secondary response for intent: %s", secondary)
         secondary_body = _body_for_intent(
             intent=secondary,
+            user_query=user_query,
             portfolio=portfolio,
             portfolio_changed=portfolio_changed,
             is_first_portfolio=is_first_portfolio,
