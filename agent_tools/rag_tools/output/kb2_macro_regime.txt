@@ -1,26 +1,26 @@
-# kb2 MACRO REGIME — RISK_ON — generated 2026-04-04 23:24
+# kb2 MACRO REGIME — RECOVERY — generated 2026-04-08 00:20
 
 --- macro-regime ---
 Intent tags: trend_prediction, full_analysis, rebalance
-Current market regime: RISK_ON. Risk-on: VIX at 23.9, positive yield curve (0.52pp spread), inflation within range. Conditions favour growth equities and risk assets.
+Current market regime: RECOVERY. Potential recovery: elevated VIX (25.86), positive yield curve (N/App). Watch for VIX breaking below 20 as confirmation.
 
 --- macro-rates ---
 Intent tags: trend_prediction, full_analysis, rebalance
-Federal Funds rate is 3.64 percent. 10-year Treasury yield is 4.31 percent. 2-year Treasury yield is 3.79 percent. Yield curve is positive (0.52pp spread), consistent with growth expectations.
+Federal Funds rate is 3.64 percent. 10-year Treasury yield is 4.35 percent.
 
 --- macro-economy ---
 Intent tags: trend_prediction, full_analysis
-CPI inflation is 2.66 percent YoY, near the Fed's target. Unemployment rate is 4.3 percent. GDP growth last quarter was 0.7 percent annualised (expansion).
+Unemployment rate is 4.3 percent.
 
 --- macro-vix ---
 Intent tags: trend_prediction, full_analysis, rebalance
-VIX at 23.9 — elevated uncertainty, options expensive. VIX has risen 2.7 points over 30 days.
+VIX at 25.9 — elevated uncertainty, options expensive. VIX has fallen 3.6 points over 30 days.
 
 --- macro-sectors ---
 Intent tags: trend_prediction, rebalance
-30-day sector leaders: Energy (positive 6.13 percent), Utilities (negative 1.28 percent), Materials (negative 2.48 percent). Laggards: Healthcare (negative 6.14 percent), Industrials (negative 6.67 percent), Consumer Discretionary (negative 6.89 percent). Defensive sector leadership — bearish signal for broader market.
+30-day sector leaders: Energy (positive 7.11 percent), Materials (positive 0.38 percent), Utilities (negative 0.13 percent). Laggards: Healthcare (negative 3.92 percent), Consumer Staples (negative 4.27 percent), Consumer Discretionary (negative 6.13 percent). Defensive sector leadership — bearish signal for broader market.
 
 --- macro-broad-market ---
 Intent tags: trend_prediction, full_analysis
-Broad market 30-day: S&P 500 negative 4.02 percent over 30 days; Nasdaq-100 negative 4.10 percent over 30 days; Russell 2000 negative 3.83 percent over 30 days. Small-cap outperforming large-cap — breadth expansion signal.
+Broad market 30-day: S&P 500 negative 2.31 percent over 30 days; Nasdaq-100 negative 2.57 percent over 30 days; Russell 2000 positive 0.25 percent over 30 days. Small-cap outperforming large-cap — breadth expansion signal.
 

@@ -136,11 +136,13 @@ class KeyRotator:
                 error_str = str(e).lower()
                 error_code = getattr(e, "code", None)
                 is_rate_limit = (
-                    error_code == 429
+                    error_code in (429, 503)
                     or "429" in error_str
+                    or "503" in error_str
                     or "resource_exhausted" in error_str
                     or "rate_limit_exceeded" in error_str
                     or "quota" in error_str
+                    or "unavailable" in error_str
                 )
 
                 if is_rate_limit and attempt < max_retries - 1:
@@ -805,17 +807,19 @@ def generate_explanation(
             ),
         )
     except Exception as e:
-        # Let rate limit errors bubble up for key rotation
+        # Re-raise rate limit and transient server errors for KeyRotator retry
         error_str = str(e).lower()
         error_code = getattr(e, "code", None)
-        is_rate_limit = (
-            error_code == 429
+        is_retryable = (
+            error_code in (429, 503)
             or "429" in error_str
+            or "503" in error_str
             or "resource_exhausted" in error_str
             or "rate_limit_exceeded" in error_str
             or "quota" in error_str
+            or "unavailable" in error_str
         )
-        if is_rate_limit:
+        if is_retryable:
             raise
 
         logger.error("Explanation generation failed: %s", e)
