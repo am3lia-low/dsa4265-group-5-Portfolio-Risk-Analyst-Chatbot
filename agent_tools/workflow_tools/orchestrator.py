@@ -13,7 +13,7 @@ load_dotenv()
 from agent_tools.data_tools import fetch_price_data, calculate_returns
 from agent_tools.quant_tools import calculate_all_metrics, metric_benchmarks
 from agent_tools.workflow_tools import classify_intent, Intent, IntentResult
-from agent_tools.workflow_tools.agent_llm import KeyRotator, generate_explanation, ExplanationContext
+from agent_tools.workflow_tools.agent_llm import KeyRotator, generate_explanation
 from agent_tools.ml_risk_tools import current_portfolio_risk_tool, future_portfolio_risk
 
 _key_rotator = KeyRotator()
@@ -436,6 +436,73 @@ def _body_for_intent(
 
 
 # ---------------------------------------------------------------------------
+# ExplanationContext builder
+# ---------------------------------------------------------------------------
+
+def _build_explanation_context(
+    intent_result: IntentResult,
+    user_query: str,
+    portfolio: dict,
+    portfolio_changed: bool,
+    old_cache: dict,
+    working_cache: dict,
+    history: list[dict],
+    secondary: Optional[Intent],
+) -> ExplanationContext:
+    metrics_block   = working_cache.get("metrics") or {}
+    all_metrics     = metrics_block.get("all_metrics")
+    metric_analysis = metrics_block.get("metric_analysis")
+
+    risk_contrib  = all_metrics.get("risk_contribution") if all_metrics else None
+    clean_metrics = (
+        {k: v for k, v in all_metrics.items() if k != "risk_contribution"}
+        if all_metrics else None
+    )
+
+    prev_metrics_block = old_cache.get("metrics") or {}
+    prev_all           = prev_metrics_block.get("all_metrics") if portfolio_changed else None
+    prev_contributions = prev_all.get("risk_contribution") if prev_all else None
+    prev_clean_metrics = (
+        {k: v for k, v in prev_all.items() if k != "risk_contribution"}
+        if prev_all else None
+    )
+    prev_risk_level = old_cache.get("risk_level") if portfolio_changed else None
+
+    secondary_concept = (
+        intent_result.extracted_concept
+        if secondary and secondary.value == "concept_explanation"
+        else None
+    )
+    secondary_metrics = (
+        intent_result.extracted_metrics
+        if secondary and secondary.value == "specific_metric"
+        else None
+    )
+
+    return {
+        "intent":                    intent_result.primary_intent,
+        "user_query":                user_query,
+        "portfolio":                 portfolio,
+        "metrics":                   clean_metrics,
+        "risk_contributions":        risk_contrib,
+        "metric_benchmarks":         metric_analysis,
+        "requested_metrics":         intent_result.extracted_metrics,
+        "risk_level":                working_cache.get("risk_level"),
+        "trend_forecast":            working_cache.get("trend_forecast"),
+        "portfolio_changed":         portfolio_changed,
+        "previous_metrics":          prev_clean_metrics,
+        "previous_contributions":    prev_contributions,
+        "previous_risk_level":       prev_risk_level,
+        "educational_context":       working_cache.get("rag_context"),
+        "chat_history":              history,
+        "concept_name":              intent_result.extracted_concept,
+        "secondary_intent":          secondary,
+        "secondary_concept":         secondary_concept,
+        "secondary_requested_metrics": secondary_metrics,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
 
@@ -569,18 +636,13 @@ def route_and_execute(
         print(f"\n  [3/3] LSTM forecast not needed for intent: {primary.value}")
 
     # ------------------------------------------------------------------
-    # 4. Store chat history for FOLLOW_UP (used by generate_explanation later)
+    # 4. Trigger RAG for primary (and secondary) intent
+    #    _body_for_intent has the side effect of calling _rag_block and
+    #    storing the result in working_cache["rag_context"].
     # ------------------------------------------------------------------
-    if primary == Intent.FOLLOW_UP or secondary == Intent.FOLLOW_UP:
-        working_cache["chat_history"] = history
-        print(f"\n  [4/4] chat_history stored ({len(history)} turns) for follow-up context")
-
-    # ------------------------------------------------------------------
-    # 5. Build primary response body
-    # ------------------------------------------------------------------
-    print(f"\n  [5a] building primary response ({primary.value})...")
-    logger.info("Generating primary response for intent: %s", primary)
-    primary_body = _body_for_intent(
+    print(f"\n  [4a] triggering RAG for primary intent ({primary.value})...")
+    logger.info("Triggering RAG / building context for primary intent: %s", primary)
+    _body_for_intent(
         intent=primary,
         user_query=user_query,
         portfolio=portfolio,
@@ -593,14 +655,10 @@ def route_and_execute(
         extracted_concept=intent_result.extracted_concept,
     )
 
-    # ------------------------------------------------------------------
-    # 5. Build secondary response body (if present)
-    # ------------------------------------------------------------------
-    content = primary_body
     if secondary:
-        print(f"  [5b] building secondary response ({secondary.value})...")
-        logger.info("Generating secondary response for intent: %s", secondary)
-        secondary_body = _body_for_intent(
+        print(f"  [4b] triggering RAG for secondary intent ({secondary.value})...")
+        logger.info("Triggering RAG / building context for secondary intent: %s", secondary)
+        _body_for_intent(
             intent=secondary,
             user_query=user_query,
             portfolio=portfolio,
@@ -612,7 +670,25 @@ def route_and_execute(
             extracted_metrics=intent_result.extracted_metrics,
             extracted_concept=intent_result.extracted_concept,
         )
-        content = f"{primary_body}\n\n---\n\n## Additionally\n\n{secondary_body}"
+
+    # ------------------------------------------------------------------
+    # 5. Build ExplanationContext and generate LLM response
+    # ------------------------------------------------------------------
+    print(f"\n  [5] generating explanation (intent={primary.value})...")
+    logger.info("Building ExplanationContext and calling generate_explanation...")
+    ctx = _build_explanation_context(
+        intent_result=intent_result,
+        user_query=user_query,
+        portfolio=portfolio,
+        portfolio_changed=portfolio_changed,
+        old_cache=old_cache,
+        working_cache=working_cache,
+        history=history,
+        secondary=secondary,
+    )
+    content = _key_rotator.call_with_retry(
+        lambda client: generate_explanation(ctx, client=client)
+    )
 
     print(f"  [done] route_and_execute complete\n")
     logger.info("route_and_execute complete.")

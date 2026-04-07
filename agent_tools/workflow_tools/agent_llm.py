@@ -554,56 +554,6 @@ def classify_intent(
 # =============================================================================
 
 # ---------------------------------------------------------------------------
-# ExplanationContext — standard input from the orchestrator
-# ---------------------------------------------------------------------------
-@dataclass
-class ExplanationContext:
-    """Standard data package assembled by route_and_execute() and passed
-    to generate_explanation().
-
-    All fields are optional except intent, user_query, and portfolio.
-    The orchestrator populates only what's relevant for the current intent.
-    The explanation LLM adapts based on what's present vs None.
-    """
-
-    # --- Always present ---
-    intent: Intent
-    user_query: str
-    portfolio: dict  # {"tickers": [...], "weights": [...], "investment_amount": ..., ...}
-
-    # --- Metrics (full_analysis, specific_metric, follow_up) ---
-    metrics: Optional[dict] = None
-    risk_contributions: Optional[dict] = None
-    metric_benchmarks: Optional[dict] = None
-    requested_metrics: Optional[list[str]] = None
-
-    # --- ML predictions (full_analysis, trend_prediction) ---
-    risk_level: Optional[dict] = None
-    trend_forecast: Optional[dict] = None
-
-    # --- Comparison (full_analysis when portfolio_changed) ---
-    portfolio_changed: bool = False
-    previous_metrics: Optional[dict] = None
-    previous_contributions: Optional[dict] = None
-    previous_risk_level: Optional[dict] = None
-
-    # --- RAG context ---
-    company_context: Optional[str] = None
-    educational_context: Optional[str] = None
-
-    # --- Conversation ---
-    chat_history: Optional[list[dict]] = None
-
-    # --- Concept (concept_explanation) ---
-    concept_name: Optional[str] = None
-
-    # --- Secondary intent (when user asked two things at once) ---
-    secondary_intent: Optional[Intent] = None
-    secondary_concept: Optional[str] = None
-    secondary_requested_metrics: Optional[list[str]] = None
-
-
-# ---------------------------------------------------------------------------
 # Explanation system prompt
 # ---------------------------------------------------------------------------
 EXPLAIN_SYSTEM_PROMPT = """\
@@ -689,82 +639,83 @@ Address both requests in a single coherent response:
 
 
 # ---------------------------------------------------------------------------
-# Build explanation prompt from ExplanationContext
+# Build explanation prompt from context dict
 # ---------------------------------------------------------------------------
-def _build_explanation_prompt(ctx: ExplanationContext) -> str:
-    """Convert ExplanationContext into a structured prompt for the explanation LLM."""
+def _build_explanation_prompt(ctx: dict) -> str:
+    """Convert a context dict into a structured prompt for the explanation LLM."""
     sections = []
 
     # User query
-    sections.append(f"## User's question\n{ctx.user_query}")
+    sections.append(f"## User's question\n{ctx['user_query']}")
 
     # Portfolio
-    tickers = ctx.portfolio.get("tickers", [])
-    weights = ctx.portfolio.get("weights", [])
-    investment = ctx.portfolio.get("investment_amount", "N/A")
-    currency = ctx.portfolio.get("currency", "USD")
-    holdings = ", ".join(f"{t} ({w}%)" for t, w in zip(tickers, weights))
+    portfolio  = ctx["portfolio"]
+    tickers    = portfolio.get("tickers", [])
+    weights    = portfolio.get("weights", [])
+    investment = portfolio.get("investment_amount", "N/A")
+    currency   = portfolio.get("currency", "USD")
+    holdings   = ", ".join(f"{t} ({w}%)" for t, w in zip(tickers, weights))
     sections.append(
         f"## Current portfolio\n{holdings}\n"
         f"Total investment: {currency} {investment}"
     )
 
     # Metrics
-    if ctx.metrics:
-        metrics_str = "\n".join(f"- {k}: {v}" for k, v in ctx.metrics.items())
+    if ctx.get("metrics"):
+        metrics_str = "\n".join(f"- {k}: {v}" for k, v in ctx["metrics"].items())
         sections.append(f"## Current metrics\n{metrics_str}")
 
     # Requested metrics (for specific_metric)
-    if ctx.requested_metrics:
+    if ctx.get("requested_metrics"):
         sections.append(
             f"## Requested metrics (focus on these)\n"
-            f"{', '.join(ctx.requested_metrics)}"
+            f"{', '.join(ctx['requested_metrics'])}"
         )
 
     # Risk contributions
-    if ctx.risk_contributions:
+    if ctx.get("risk_contributions"):
         contrib_str = "\n".join(
             f"- {k}: {v:.1%}" if isinstance(v, float) else f"- {k}: {v}"
-            for k, v in ctx.risk_contributions.items()
+            for k, v in ctx["risk_contributions"].items()
         )
         sections.append(f"## Risk contributions (% of portfolio volatility)\n{contrib_str}")
 
     # Benchmarks
-    if ctx.metric_benchmarks:
+    if ctx.get("metric_benchmarks"):
         bench_str = "\n".join(
-            f"- {k}: {v}" for k, v in ctx.metric_benchmarks.items()
+            f"- {k}: {v}" for k, v in ctx["metric_benchmarks"].items()
         )
         sections.append(f"## Metric benchmarks\n{bench_str}")
 
     # ML risk level
-    if ctx.risk_level:
-        label = ctx.risk_level.get("label", "Unknown")
-        confidence = ctx.risk_level.get("confidence", 0)
+    if ctx.get("risk_level"):
+        label      = ctx["risk_level"].get("label", "Unknown")
+        confidence = ctx["risk_level"].get("confidence", 0)
         sections.append(
             f"## NN risk classification\n"
             f"Label: {label} (confidence: {confidence:.0%})"
         )
 
     # Trend forecast
-    if ctx.trend_forecast:
-        forecast_str = "\n".join(f"- {k}: {v}" for k, v in ctx.trend_forecast.items())
+    if ctx.get("trend_forecast"):
+        forecast_str = "\n".join(f"- {k}: {v}" for k, v in ctx["trend_forecast"].items())
         sections.append(f"## LSTM volatility forecast\n{forecast_str}")
 
     # Comparison data (portfolio changed)
-    if ctx.portfolio_changed and ctx.previous_metrics:
-        prev_str = "\n".join(f"- {k}: {v}" for k, v in ctx.previous_metrics.items())
+    if ctx.get("portfolio_changed") and ctx.get("previous_metrics"):
+        prev_str = "\n".join(f"- {k}: {v}" for k, v in ctx["previous_metrics"].items())
         sections.append(f"## Previous portfolio metrics (BEFORE change)\n{prev_str}")
 
-        if ctx.previous_contributions:
+        if ctx.get("previous_contributions"):
             prev_contrib = "\n".join(
                 f"- {k}: {v:.1%}" if isinstance(v, float) else f"- {k}: {v}"
-                for k, v in ctx.previous_contributions.items()
+                for k, v in ctx["previous_contributions"].items()
             )
             sections.append(f"## Previous risk contributions\n{prev_contrib}")
 
-        if ctx.previous_risk_level:
-            prev_label = ctx.previous_risk_level.get("label", "Unknown")
-            prev_conf = ctx.previous_risk_level.get("confidence", 0)
+        if ctx.get("previous_risk_level"):
+            prev_label = ctx["previous_risk_level"].get("label", "Unknown")
+            prev_conf  = ctx["previous_risk_level"].get("confidence", 0)
             sections.append(
                 f"## Previous NN classification\n"
                 f"Label: {prev_label} (confidence: {prev_conf:.0%})"
@@ -777,30 +728,31 @@ def _build_explanation_prompt(ctx: ExplanationContext) -> str:
         )
 
     # RAG context
-    if ctx.company_context:
-        sections.append(f"## Company context (from SEC filings)\n{ctx.company_context}")
+    if ctx.get("company_context"):
+        sections.append(f"## Company context (from SEC filings)\n{ctx['company_context']}")
 
-    if ctx.educational_context:
-        sections.append(f"## Educational context (from knowledge base)\n{ctx.educational_context}")
+    if ctx.get("educational_context"):
+        sections.append(f"## Educational context (from knowledge base)\n{ctx['educational_context']}")
 
     # Concept name
-    if ctx.concept_name:
-        sections.append(f"## Concept to explain\n{ctx.concept_name}")
+    if ctx.get("concept_name"):
+        sections.append(f"## Concept to explain\n{ctx['concept_name']}")
 
     # Secondary intent
-    if ctx.secondary_intent:
-        parts = [f"## Secondary request\nIntent: {ctx.secondary_intent.value}"]
-        if ctx.secondary_concept:
-            parts.append(f"Concept: {ctx.secondary_concept}")
-        if ctx.secondary_requested_metrics:
-            parts.append(f"Metrics: {', '.join(ctx.secondary_requested_metrics)}")
+    secondary_intent = ctx.get("secondary_intent")
+    if secondary_intent:
+        parts = [f"## Secondary request\nIntent: {secondary_intent.value}"]
+        if ctx.get("secondary_concept"):
+            parts.append(f"Concept: {ctx['secondary_concept']}")
+        if ctx.get("secondary_requested_metrics"):
+            parts.append(f"Metrics: {', '.join(ctx['secondary_requested_metrics'])}")
         sections.append("\n".join(parts))
 
-    # Chat history (for follow-up)
-    if ctx.chat_history:
+    # Chat history
+    if ctx.get("chat_history"):
         history_lines = []
-        for msg in ctx.chat_history[-6:]:
-            role = msg["role"].upper()
+        for msg in ctx["chat_history"][-6:]:
+            role    = msg["role"].upper()
             content = msg["content"]
             if len(content) > 300:
                 content = content[:300] + "..."
@@ -814,19 +766,21 @@ def _build_explanation_prompt(ctx: ExplanationContext) -> str:
 # Generate explanation
 # ---------------------------------------------------------------------------
 def generate_explanation(
-    ctx: ExplanationContext,
+    ctx: dict,
     client: Optional[genai.Client] = None,
 ) -> str:
     """
-    Generate a natural language explanation based on the ExplanationContext.
+    Generate a natural language explanation from a context dict.
     Uses Gemini 2.5 Flash for richer reasoning than Flash-Lite.
 
     Rate limit errors (429) are re-raised for key rotation handling.
 
     Parameters
     ----------
-    ctx : ExplanationContext
-        All data needed for the explanation, assembled by the orchestrator.
+    ctx : dict
+        Context assembled by _build_explanation_context in orchestrator.py.
+        Required keys: "intent", "user_query", "portfolio".
+        All other keys are optional and intent-dependent.
     client : genai.Client | None
         Gemini client. If None, creates one from env var.
 

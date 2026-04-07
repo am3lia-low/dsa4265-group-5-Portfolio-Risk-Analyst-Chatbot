@@ -57,11 +57,12 @@ if user_query:
 
     workflow = route_and_execute(
         intent,
+        user_query,
         portfolio=st.session_state.portfolio,
         is_first_portfolio=len(st.session_state.all_portfolios) == 1,
         portfolio_changed=st.session_state.portfolio_updated,
         recent_history=st.session_state.chat_history,
-        cache = st.session_state.cache,
+        cache=st.session_state.cache,
     )
     response = workflow.content
 
