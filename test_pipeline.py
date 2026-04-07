@@ -8,7 +8,13 @@ Run: python test_pipeline.py
 """
 
 import sys
+from dotenv import load_dotenv
+load_dotenv()
+
 from agent_tools.workflow_tools import classify_intent, route_and_execute, Intent, IntentResult, WorkflowResult
+from agent_tools.workflow_tools.agent_llm import KeyRotator
+
+_key_rotator = KeyRotator()
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -61,11 +67,13 @@ def test_intent_classification():
 
     for query, expected_intent in QUERY_INTENT_MAP.items():
         print(f"\n  Query: \"{query}\"")
-        intent = classify_intent(
-            message=query,
-            recent_history=[],
-            portfolio_changed=False,
-            client=None,
+        intent = _key_rotator.call_with_retry(
+            lambda client: classify_intent(
+                message=query,
+                recent_history=[],
+                portfolio_changed=False,
+                client=client,
+            )
         )
         print_intent(intent)
 
@@ -92,11 +100,13 @@ def test_full_pipeline_first_portfolio():
     print(f"  Query: \"{query}\"")
 
     # Stage 1: classify
-    intent = classify_intent(
-        message=query,
-        recent_history=[],
-        portfolio_changed=True,
-        client=None,
+    intent = _key_rotator.call_with_retry(
+        lambda client: classify_intent(
+            message=query,
+            recent_history=[],
+            portfolio_changed=True,
+            client=client,
+        )
     )
     print(f"\n  [classify_intent output]")
     print_intent(intent)
@@ -150,11 +160,13 @@ def test_full_pipeline_followup(warm_cache: dict):
     print(f"  Query: \"{query}\"")
     print(f"  History: {len(history)} message(s)")
 
-    intent = classify_intent(
-        message=query,
-        recent_history=history,
-        portfolio_changed=False,
-        client=None,
+    intent = _key_rotator.call_with_retry(
+        lambda client: classify_intent(
+            message=query,
+            recent_history=history,
+            portfolio_changed=False,
+            client=client,
+        )
     )
     print(f"\n  [classify_intent output]")
     print_intent(intent)
@@ -189,11 +201,13 @@ def test_full_pipeline_specific_metric():
     query = "What is my Sharpe ratio and max drawdown?"
     print(f"  Query: \"{query}\"")
 
-    intent = classify_intent(
-        message=query,
-        recent_history=[],
-        portfolio_changed=True,
-        client=None,
+    intent = _key_rotator.call_with_retry(
+        lambda client: classify_intent(
+            message=query,
+            recent_history=[],
+            portfolio_changed=True,
+            client=client,
+        )
     )
     print(f"\n  [classify_intent output]")
     print_intent(intent)
@@ -232,11 +246,13 @@ def test_full_pipeline_dual_intent():
     query = DUAL_INTENT_QUERY
     print(f"  Query: \"{query}\"")
 
-    intent = classify_intent(
-        message=query,
-        recent_history=[],
-        portfolio_changed=True,
-        client=None,
+    intent = _key_rotator.call_with_retry(
+        lambda client: classify_intent(
+            message=query,
+            recent_history=[],
+            portfolio_changed=True,
+            client=client,
+        )
     )
     print(f"\n  [classify_intent output]")
     print_intent(intent)

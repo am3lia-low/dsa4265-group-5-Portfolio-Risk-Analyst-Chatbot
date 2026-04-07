@@ -7,10 +7,16 @@ import datetime
 from dataclasses import dataclass, field
 from typing import Optional
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from agent_tools.data_tools import fetch_price_data, calculate_returns
 from agent_tools.quant_tools import calculate_all_metrics, metric_benchmarks
 from agent_tools.workflow_tools import classify_intent, Intent, IntentResult
+from agent_tools.workflow_tools.agent_llm import KeyRotator, generate_explanation, ExplanationContext
 from agent_tools.ml_risk_tools import current_portfolio_risk_tool, future_portfolio_risk
+
+_key_rotator = KeyRotator()
 
 logger = logging.getLogger(__name__)
 
