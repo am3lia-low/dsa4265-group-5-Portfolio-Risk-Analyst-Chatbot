@@ -619,6 +619,14 @@ Present the forecast with appropriate caveats:
 3. What could cause the prediction to be wrong
 4. ALWAYS include uncertainty disclaimers — predictions are estimates, not guarantees
 
+CRITICAL — interpret forecast fields correctly:
+- predicted_direction / prob_up refer to the direction of PORTFOLIO RETURNS, NOT volatility.
+  "Up" means the model predicts positive/increasing returns. Do NOT describe this as
+  volatility going up or down.
+- predicted_volatility is the forecast volatility level. Compare it to current volatility
+  to describe whether risk is expected to rise or fall.
+- Never conflate return direction with volatility direction — they are separate signals.
+
 ### follow_up
 Be concise and direct:
 1. Address exactly what the user asked about
@@ -684,10 +692,22 @@ def _build_explanation_prompt(ctx: dict) -> str:
 
     # Benchmarks
     if ctx.get("metric_benchmarks"):
-        bench_str = "\n".join(
-            f"- {k}: {v}" for k, v in ctx["metric_benchmarks"].items()
-        )
-        sections.append(f"## Metric benchmarks\n{bench_str}")
+        lines = []
+        for k, v in ctx["metric_benchmarks"].items():
+            if isinstance(v, dict):
+                raw_val = v.get("value", "N/A")
+                label   = v.get("label", "")
+                comment = v.get("comment", "")
+                val_str = f"{raw_val:.4f}" if isinstance(raw_val, float) else str(raw_val)
+                line = f"- {k}: {val_str}"
+                if label:
+                    line += f" [{label}]"
+                if comment:
+                    line += f" — {comment}"
+                lines.append(line)
+            else:
+                lines.append(f"- {k}: {v}")
+        sections.append("## Metric benchmarks\n" + "\n".join(lines))
 
     # ML risk level
     if ctx.get("risk_level"):
@@ -701,7 +721,16 @@ def _build_explanation_prompt(ctx: dict) -> str:
     # Trend forecast
     if ctx.get("trend_forecast"):
         forecast_str = "\n".join(f"- {k}: {v}" for k, v in ctx["trend_forecast"].items())
-        sections.append(f"## LSTM volatility forecast\n{forecast_str}")
+        sections.append(
+            "## LSTM volatility forecast\n"
+            "IMPORTANT — field definitions:\n"
+            "- predicted_direction: direction of PORTFOLIO RETURNS (not volatility)."
+            " 'Up' means returns are predicted to be positive/increasing.\n"
+            "- prob_up: probability that portfolio returns move upward (positive).\n"
+            "- predicted_volatility: the forecast volatility level (annualised).\n"
+            "- confidence: model confidence in the directional prediction.\n"
+            + forecast_str
+        )
 
     # Comparison data (portfolio changed)
     if ctx.get("portfolio_changed") and ctx.get("previous_metrics"):
@@ -761,7 +790,105 @@ def _build_explanation_prompt(ctx: dict) -> str:
             history_lines.append(f"[{role}]: {content}")
         sections.append(f"## Recent conversation\n" + "\n".join(history_lines))
 
+    # Canonical numbers block — single authorised reference for all figures
+    authorised: list[str] = []
+    _metrics = ctx.get("metrics") or {}
+    _benchmarks = ctx.get("metric_benchmarks") or {}
+    seen_keys: set[str] = set()
+    for k, v in _benchmarks.items():
+        seen_keys.add(k)
+        if isinstance(v, dict):
+            raw = v.get("value", "N/A")
+            val_str = f"{raw:.4f}" if isinstance(raw, float) else str(raw)
+            authorised.append(f"{k} = {val_str}")
+        elif isinstance(v, (int, float)):
+            authorised.append(f"{k} = {v:.4f}")
+    for k, v in _metrics.items():
+        if k not in seen_keys and isinstance(v, (int, float)):
+            authorised.append(f"{k} = {v:.4f}")
+    _contrib = ctx.get("risk_contributions") or {}
+    for k, v in _contrib.items():
+        if isinstance(v, float):
+            authorised.append(f"risk_contribution[{k}] = {v:.4f}")
+    if ctx.get("risk_level"):
+        conf = ctx["risk_level"].get("confidence", 0)
+        authorised.append(f"risk_score = {float(conf):.4f}")
+    if ctx.get("trend_forecast"):
+        tf = ctx["trend_forecast"]
+        for k, v in tf.items():
+            if isinstance(v, (int, float)):
+                authorised.append(f"forecast[{k}] = {v:.4f}")
+    if authorised:
+        sections.append(
+            "## AUTHORISED NUMBERS (single source of truth)\n"
+            "Every numerical value you cite MUST appear in this list. "
+            "Do not round, adjust, or invent any figure.\n"
+            + "\n".join(authorised)
+        )
+
+    # Grounding reminder — placed last so it is closest to generation
+    sections.append(
+        "## GROUNDING REQUIREMENT\n"
+        "Only cite numbers that appear verbatim in the AUTHORISED NUMBERS section above. "
+        "Do not use values from your training data, round to 'nicer' numbers, "
+        "or fill gaps with plausible-sounding figures. "
+        "If a value is not in the data provided, say so explicitly."
+    )
+
     return "\n\n".join(sections)
+
+
+# ---------------------------------------------------------------------------
+# Post-generation hallucination check
+# ---------------------------------------------------------------------------
+import re as _re
+
+def _check_numbers(response_text: str, ctx: dict) -> list[str]:
+    """
+    Extract all decimal numbers from the response and check each one exists
+    in the context data. Returns a list of suspect values not found in context.
+
+    Only flags numbers with at least 1 decimal place (ignores round integers
+    like "5 stocks" or "4 dimensions") to reduce false positives.
+    """
+    # Collect all authorised floats from context
+    authorised_vals: set[str] = set()
+
+    def _add(v):
+        if isinstance(v, float):
+            # Store multiple representations the LLM might use
+            authorised_vals.add(f"{v:.4f}")
+            authorised_vals.add(f"{v:.2f}")
+            authorised_vals.add(f"{v:.1f}")
+            authorised_vals.add(f"{v*100:.2f}")   # percentage form
+            authorised_vals.add(f"{v*100:.1f}")
+            authorised_vals.add(f"{v*100:.0f}")
+
+    for v in (ctx.get("metrics") or {}).values():
+        _add(v)
+    for v in (ctx.get("risk_contributions") or {}).values():
+        _add(v)
+    for v in (ctx.get("metric_benchmarks") or {}).values():
+        if isinstance(v, dict):
+            _add(v.get("value"))
+        else:
+            _add(v)
+    if ctx.get("risk_level"):
+        _add(float(ctx["risk_level"].get("confidence", 0)))
+    for v in (ctx.get("trend_forecast") or {}).values():
+        if isinstance(v, float):
+            _add(v)
+    # Also allow investment amount and portfolio weights
+    p = ctx.get("portfolio") or {}
+    if isinstance(p.get("investment_amount"), (int, float)):
+        authorised_vals.add(str(int(p["investment_amount"])))
+    for w in p.get("weights", []):
+        _add(float(w))
+
+    # Extract numbers with at least one decimal place from the response
+    found = _re.findall(r"\b\d+\.\d+\b", response_text)
+    suspects = [n for n in found if n not in authorised_vals]
+    return suspects
 
 
 # ---------------------------------------------------------------------------
@@ -802,8 +929,9 @@ def generate_explanation(
             contents=prompt,
             config=types.GenerateContentConfig(
                 system_instruction=EXPLAIN_SYSTEM_PROMPT,
-                temperature=0.7,  # some creativity for natural explanations
-                max_output_tokens=2048,
+                temperature=0.3,  # lower = less creative drift, fewer hallucinated numbers
+                max_output_tokens=8192,
+                thinking_config=types.ThinkingConfig(thinking_budget=1024),
             ),
         )
     except Exception as e:
@@ -828,4 +956,13 @@ def generate_explanation(
             "Please try again."
         )
 
-    return response.text
+    text = response.text
+
+    suspects = _check_numbers(text, ctx)
+    if suspects:
+        logger.warning(
+            "Possible hallucinated numbers in explanation (not found in context): %s",
+            suspects,
+        )
+
+    return text
