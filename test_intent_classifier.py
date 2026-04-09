@@ -16,6 +16,8 @@ Assumptions:
 import os
 import sys
 import time
+import matplotlib.pyplot as plt
+import numpy as np
 from google import genai
 
 # Load .env file if python-dotenv is available
@@ -136,6 +138,8 @@ DELAY = 20  # seconds between API calls (shorter now with key rotation)
 passed = 0
 failed = 0
 errors = []
+results_log = []   # structured records for plotting
+_current_section = "uncategorised"
 
 
 # ---------------------------------------------------------------------------
@@ -151,7 +155,7 @@ def test(
     check_entities: dict = None,
 ):
     """Run one test case against the live Gemini API with key rotation."""
-    global passed, failed, errors
+    global passed, failed, errors, results_log, _current_section
 
     time.sleep(DELAY)
 
@@ -169,6 +173,14 @@ def test(
         failed += 1
         errors.append(f"  CRASH  {name}: {e}")
         print(f"  💥 {name}: CRASHED — {e}")
+        results_log.append({
+            "name": name,
+            "section": _current_section,
+            "expected": expected_primary.value,
+            "predicted": "CRASH",
+            "confidence": 0.0,
+            "passed": False,
+        })
         return
 
     # Check primary intent
@@ -232,6 +244,15 @@ def test(
     if not all_ok:
         errors.append(f"  {symbol} {name}: got {primary_str}{secondary_str}")
 
+    results_log.append({
+        "name": name,
+        "section": _current_section,
+        "expected": expected_primary.value,
+        "predicted": result.primary_intent.value,
+        "confidence": result.confidence,
+        "passed": all_ok,
+    })
+
     print()
 
 
@@ -246,6 +267,8 @@ def run_tests():
     # =====================================================================
     # 1. CLEAR-CUT INTENTS
     # =====================================================================
+    global _current_section
+    _current_section = "1. Clear-cut intents"
     print("\n--- 1. Clear-cut intents ---\n")
 
 #     test("General: simple greeting",
@@ -312,6 +335,7 @@ def run_tests():
     # =====================================================================
     # 2. DISAMBIGUATION EDGE CASES
     # =====================================================================
+    _current_section = "2. Disambiguation"
     print("\n--- 2. Disambiguation edge cases ---\n")
 
 #     test("specific vs concept: 'what is MY sharpe' → specific",
@@ -330,6 +354,7 @@ def run_tests():
     # =====================================================================
     # 3. MULTI-INTENT MESSAGES
     # =====================================================================
+    _current_section = "3. Multi-intent"
     print("\n--- 3. Multi-intent messages ---\n")
 
 #     test("Multi: analyze + explain concept",
@@ -350,6 +375,7 @@ def run_tests():
     # =====================================================================
     # 4. DISGUISED INTENTS
     # =====================================================================
+    _current_section = "4. Disguised intents"
     print("\n--- 4. Disguised intents ---\n")
 
 #     test("Disguised: looks like follow-up → concept",
@@ -369,6 +395,7 @@ def run_tests():
     # =====================================================================
     # 5. AMBIGUOUS / STRESS TESTS
     # =====================================================================
+    _current_section = "5. Ambiguous / stress"
     print("\n--- 5. Ambiguous / stress tests ---\n")
 
 #     test("Ambiguous: 'How's my risk?'",
@@ -394,6 +421,7 @@ def run_tests():
     # =====================================================================
     # 6. ENTITY EXTRACTION STRESS TESTS
     # =====================================================================
+    _current_section = "6. Entity extraction"
     print("\n--- 6. Entity extraction stress tests ---\n")
 
 #     test("Entity: vague downside → should infer var/cvar/sortino",
@@ -418,6 +446,7 @@ def run_tests():
     # =====================================================================
     # 7. HARD MULTI-INTENT EDGE CASES
     # =====================================================================
+    _current_section = "7. Hard multi-intent"
     print("\n--- 7. Hard multi-intent edge cases ---\n")
 
 #     test("Multi: sell + analyze (both map to full_analysis)",
@@ -448,6 +477,7 @@ def run_tests():
     # =====================================================================
     # 8. ADVERSARIAL / TRICKY PHRASING
     # =====================================================================
+    _current_section = "8. Adversarial / tricky"
     print("\n--- 8. Adversarial / tricky phrasing ---\n")
 
 #     test("Tricky: negation — 'don't analyze'",
@@ -509,6 +539,7 @@ def run_tests():
     # =====================================================================
     # 9. BOUNDARY: full_analysis vs specific_metric
     # =====================================================================
+    _current_section = "9. Boundary FA vs SM"
     print("\n--- 9. Boundary: full_analysis vs specific_metric ---\n")
 
 #     test("Boundary: 'Is this risky?' → full_analysis",
@@ -546,6 +577,92 @@ def run_tests():
     return failed == 0
 
 
+def plot_results():
+    if not results_log:
+        print("No results to plot.")
+        return
+
+    INTENTS = [i.value for i in Intent]
+    sections = list(dict.fromkeys(r["section"] for r in results_log))
+
+    fig, axes = plt.subplots(1, 3, figsize=(18, 5))
+    fig.suptitle("Intent Classifier — Test Results", fontsize=14, fontweight="bold")
+
+    # ── Plot 1: Confusion matrix ─────────────────────────────────────────────
+    ax = axes[0]
+    all_labels = INTENTS + (["CRASH"] if any(r["predicted"] == "CRASH" for r in results_log) else [])
+    n = len(all_labels)
+    mat = np.zeros((n, n), dtype=int)
+    label_idx = {l: i for i, l in enumerate(all_labels)}
+    for r in results_log:
+        exp = r["expected"]
+        pred = r["predicted"]
+        if exp in label_idx and pred in label_idx:
+            mat[label_idx[exp]][label_idx[pred]] += 1
+
+    im = ax.imshow(mat, cmap="Blues")
+    ax.set_xticks(range(n))
+    ax.set_yticks(range(n))
+    ax.set_xticklabels([l.replace("_", "\n") for l in all_labels], fontsize=7)
+    ax.set_yticklabels([l.replace("_", "\n") for l in all_labels], fontsize=7)
+    ax.set_xlabel("Predicted", fontsize=9)
+    ax.set_ylabel("Expected", fontsize=9)
+    ax.set_title("Confusion Matrix", fontsize=11, fontweight="bold")
+    for i in range(n):
+        for j in range(n):
+            if mat[i, j] > 0:
+                ax.text(j, i, str(mat[i, j]), ha="center", va="center",
+                        fontsize=10, fontweight="bold",
+                        color="white" if mat[i, j] >= mat.max() * 0.6 else "black")
+    fig.colorbar(im, ax=ax, shrink=0.8)
+
+    # ── Plot 2: Pass/fail by section ─────────────────────────────────────────
+    ax = axes[1]
+    sec_pass  = {s: 0 for s in sections}
+    sec_fail  = {s: 0 for s in sections}
+    for r in results_log:
+        if r["passed"]:
+            sec_pass[r["section"]] += 1
+        else:
+            sec_fail[r["section"]] += 1
+
+    x = np.arange(len(sections))
+    w = 0.35
+    bars_p = ax.bar(x - w/2, [sec_pass[s] for s in sections], w, label="Pass", color="#4CAF50")
+    bars_f = ax.bar(x + w/2, [sec_fail[s] for s in sections], w, label="Fail", color="#F44336")
+    ax.set_xticks(x)
+    ax.set_xticklabels(sections, rotation=35, ha="right", fontsize=7)
+    ax.set_ylabel("Count", fontsize=9)
+    ax.set_title("Pass / Fail by Section", fontsize=11, fontweight="bold")
+    ax.legend(fontsize=8)
+    for bar in list(bars_p) + list(bars_f):
+        h = bar.get_height()
+        if h > 0:
+            ax.text(bar.get_x() + bar.get_width() / 2, h + 0.05, str(int(h)),
+                    ha="center", va="bottom", fontsize=8)
+
+    # ── Plot 3: Confidence scores (pass vs fail) ──────────────────────────────
+    ax = axes[2]
+    conf_pass = [r["confidence"] for r in results_log if r["passed"]]
+    conf_fail = [r["confidence"] for r in results_log if not r["passed"]]
+    ax.scatter(range(len(conf_pass)), conf_pass, color="#4CAF50", label="Pass",
+               s=60, zorder=3)
+    ax.scatter(range(len(conf_fail)), conf_fail, color="#F44336", label="Fail",
+               marker="x", s=80, linewidths=2, zorder=3)
+    ax.axhline(0.5, color="grey", linestyle="--", linewidth=0.8, label="0.5 threshold")
+    ax.set_ylim(0, 1.05)
+    ax.set_xlabel("Test index", fontsize=9)
+    ax.set_ylabel("Confidence", fontsize=9)
+    ax.set_title("Classifier Confidence per Test", fontsize=11, fontweight="bold")
+    ax.legend(fontsize=8)
+
+    plt.tight_layout()
+    plt.savefig("eval_intent_classifier.png", dpi=150, bbox_inches="tight")
+    plt.show()
+    print(f"Plot saved to eval_intent_classifier.png")
+
+
 if __name__ == "__main__":
     success = run_tests()
+    plot_results()
     sys.exit(0 if success else 1)
