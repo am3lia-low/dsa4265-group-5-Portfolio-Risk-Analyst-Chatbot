@@ -27,7 +27,7 @@ initialize_session_state()
 # === Render sidebar & chat messages ===
 render_sidebar()
 render_status(st.session_state.portfolio_messages)
-render_chat_history(st.session_state.chat_history)
+render_chat_history(st.session_state.full_chat_history)
 
 # === Chatbox ===
 user_query = st.chat_input(
@@ -36,6 +36,7 @@ user_query = st.chat_input(
 )
 
 if user_query:
+
     # show user message
     st.session_state.chat_history.append({
         "role": "user",
@@ -43,6 +44,8 @@ if user_query:
     })
 
     st.session_state.full_chat_history.append({"role": "user", "content": user_query})
+
+    gif_runner = st.image("ui/loading_gif.gif")
 
     intent = _key_rotator.call_with_retry(
         lambda client: classify_intent(
@@ -54,7 +57,7 @@ if user_query:
     )
     if intent.secondary_intent:
         print(f"intent detected {intent.primary_intent} and {intent.secondary_intent}")
-
+    
     workflow = route_and_execute(
         intent,
         user_query,
@@ -62,17 +65,17 @@ if user_query:
         is_first_portfolio=len(st.session_state.all_portfolios) == 1,
         portfolio_changed=st.session_state.portfolio_updated,
         recent_history=st.session_state.chat_history,
-        cache=st.session_state.cache,
+        cache=st.session_state.cache
     )
     response = workflow.content
+
+    gif_runner.empty()
 
     st.session_state.chat_history.append({
         "role": "assistant",
         "content": response,
         "metadata": {
-            "intent": "intent",
-            "tools_used": ["tool1"],        # to be updated
-            "models_called": ["model1"]     # to be updated
+            "intent": workflow.intent # removed tools_used and models_called
         }
     })
 
@@ -80,9 +83,7 @@ if user_query:
         "role": "assistant",
         "content": response,
         "metadata": {
-            "intent": "intent",
-            "tools_used": ["tool1"],        # to be updated
-            "models_called": ["model1"]     # to be updated
+            "intent": workflow.intent # removed tools_used and models_called
         }
     })
 
