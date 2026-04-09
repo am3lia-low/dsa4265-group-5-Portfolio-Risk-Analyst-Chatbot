@@ -124,6 +124,7 @@ def render_sidebar():
     }
 
     if analyze_clicked:
+        
         is_valid, msg = portfolio_checker(portfolio, investment_amount)
 
         if is_valid:
@@ -154,7 +155,10 @@ def render_sidebar():
 
     if len(st.session_state.full_chat_history) >= 2:
         if st.sidebar.button("Summarise Results"):
+            # print("RUNNING")
+            # gif_runner = st.image("ui/loading_gif.gif")
             add_portfolio_summary_message()
+            # gif_runner.empty()
             st.rerun()
 
 
