@@ -917,7 +917,7 @@ def generate_explanation(
         client = genai.Client()
 
     prompt = _build_explanation_prompt(ctx)
-    print(prompt)
+    # print(prompt)
 
     try:
         response = client.models.generate_content(
