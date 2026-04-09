@@ -664,16 +664,11 @@ def _build_explanation_prompt(ctx: dict) -> str:
     weights    = portfolio.get("weights", [])
     investment = portfolio.get("investment_amount", "N/A")
     currency   = portfolio.get("currency", "USD")
-    holdings   = ", ".join(f"{t} ({w}%)" for t, w in zip(tickers, weights))
+    holdings   = ", ".join(f"{t} ({w:.0%})" for t, w in zip(tickers, weights))
     sections.append(
         f"## Current portfolio\n{holdings}\n"
         f"Total investment: {currency} {investment}"
     )
-
-    # Metrics
-    if ctx.get("metrics"):
-        metrics_str = "\n".join(f"- {k}: {v}" for k, v in ctx["metrics"].items())
-        sections.append(f"## Current metrics\n{metrics_str}")
 
     # Requested metrics (for specific_metric)
     if ctx.get("requested_metrics"):
@@ -922,6 +917,7 @@ def generate_explanation(
         client = genai.Client()
 
     prompt = _build_explanation_prompt(ctx)
+    print(prompt)
 
     try:
         response = client.models.generate_content(
@@ -929,7 +925,7 @@ def generate_explanation(
             contents=prompt,
             config=types.GenerateContentConfig(
                 system_instruction=EXPLAIN_SYSTEM_PROMPT,
-                temperature=0.3,  # lower = less creative drift, fewer hallucinated numbers
+                temperature=0.0,  # lower = less creative drift, fewer hallucinated numbers
                 max_output_tokens=8192,
                 thinking_config=types.ThinkingConfig(thinking_budget=1024),
             ),

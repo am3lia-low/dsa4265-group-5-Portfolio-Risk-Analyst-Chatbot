@@ -1,4 +1,4 @@
-# kb4 STRATEGIES — 9 frameworks — generated 2026-04-08 22:57
+# kb4 STRATEGIES — 9 frameworks — generated 2026-04-09 14:24
 
 --- threshold_rebalancing [rebalancing] ---
 Label: Threshold Rebalancing (Bands Strategy)

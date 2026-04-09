@@ -29,8 +29,8 @@ flowchart TD
         subgraph S1["Step 1 — Market Data + Metrics\n(full_analysis · specific_metric · trend_prediction)"]
             J[fetch_price_data\nyfinance]
             K[calculate_returns]
-            L[calculate_all_metrics]
-            M[metric_benchmarks]
+            L[calculate_all_metrics\nVol · VaR · CVaR · Sharpe · Sortino\nbeta · HHI · risk_contribution · …]
+            M[metric_benchmarks\ngood / neutral / poor labels]
         end
 
         subgraph S2["Step 2 — Risk Classification\n(full_analysis only)"]
@@ -42,13 +42,19 @@ flowchart TD
         end
 
         subgraph S4["Step 4 — RAG Retrieval\n(intent-conditional)"]
-            P[_body_for_intent\n_rag_block]
-            Q[retrieve_context\nVector Search]
+            P[_rag_block\nretrieve_context]
+            subgraph KB["Knowledge Bases  (vector_db)"]
+                KB1[kb1 · Tickers]
+                KB2[kb2 · Macro Regime]
+                KB3[kb3 · Concepts]
+                KB4[kb4 · Strategies]
+            end
         end
 
-        subgraph S5["Step 5 — Explanation"]
-            R[_build_explanation_context]
+        subgraph S5["Step 5 — Explanation  (agent_llm.py)"]
+            R[_build_explanation_prompt]
             S[generate_explanation\nGemini 2.5 Flash]
+            CHK[_check_numbers\nhallucination guard]
         end
 
         T[WorkflowResult\ncontent · cache]
@@ -74,22 +80,24 @@ flowchart TD
     K -->|returns_df| L
     L --> M
 
-    M -->|metrics + benchmarks| N
-    M -->|metrics| O
+    L -->|all_metrics| N
+    V -->|portfolio| O
 
     N -->|risk_level + score| R
     O -->|direction · volatility · confidence| R
 
     I -->|intent-mapped| P
-    P --> Q
-    Q -->|educational_context| R
+    P --> KB1 & KB2 & KB3 & KB4
+    KB1 & KB2 & KB3 & KB4 -->|retrieved chunks| R
 
-    L -->|metrics| R
+    L -->|all_metrics + risk_contributions| R
+    M -->|benchmarks| R
     G -->|intent · concept · query| R
     V -->|portfolio · chat_history| R
 
     R -->|context dict| S
-    S -->|LLM explanation| T
+    S -->|response text| CHK
+    CHK -->|validated text| T
 
     T -->|content| E
     T -->|cache payload| D
@@ -108,11 +116,12 @@ flowchart TD
 | `route_and_execute` | `agent_tools/workflow_tools/orchestrator.py` | Main orchestration pipeline |
 | `fetch_price_data` | `agent_tools/data_tools/` | Price history via yfinance |
 | `calculate_returns` | `agent_tools/data_tools/` | Returns computation |
-| `calculate_all_metrics` | `agent_tools/quant_tools/` | Vol, VaR, CVaR, Sharpe, Sortino, beta, HHI, etc. |
+| `calculate_all_metrics` | `agent_tools/quant_tools/` | Vol, VaR, CVaR, Sharpe, Sortino, beta, HHI, risk_contribution, etc. |
 | `metric_benchmarks` | `agent_tools/quant_tools/` | good / neutral / poor labels per metric |
-| `current_portfolio_risk_tool` | `agent_tools/ml_risk_tools/` | Neural network risk level + score |
-| `future_portfolio_risk` | `agent_tools/ml_risk_tools/` | LSTM volatility direction forecast |
-| `retrieve_context` | `agent_tools/rag_tools/` | Vector search over knowledge base |
+| `current_portfolio_risk_tool` | `agent_tools/ml_risk_tools/` | Neural network risk classifier (takes portfolio + all_metrics) |
+| `future_portfolio_risk` | `agent_tools/ml_risk_tools/` | LSTM volatility direction forecast (takes portfolio) |
+| `retrieve_context` | `agent_tools/rag_tools/` | Vector search over kb1–kb4 knowledge bases |
+| `_check_numbers` | `agent_tools/workflow_tools/agent_llm.py` | Post-generation hallucination guard |
 | `generate_explanation` | `agent_tools/workflow_tools/agent_llm.py` | Final LLM response via Gemini 2.5 Flash |
 | `update_cache` | `ui/state.py` | Persists computed data to session state |
 
@@ -120,9 +129,9 @@ flowchart TD
 
 | Intent | Step 1 | Step 2 | Step 3 | Step 4 (RAG) |
 |---|:---:|:---:|:---:|:---:|
-| `full_analysis` | yes | yes | yes | yes |
-| `specific_metric` | yes | — | — | — |
-| `trend_prediction` | yes | — | yes | yes |
-| `concept_explanation` | — | — | — | yes |
-| `follow_up` | — | — | — | conditional |
+| `full_analysis` | yes | yes | yes | yes (`full_analysis` intent) |
+| `specific_metric` | yes | — | — | conditional (`concept_explanation` intent) |
+| `trend_prediction` | yes | — | yes | yes (`trend_prediction` intent) |
+| `concept_explanation` | — | — | — | yes (`concept_explanation` intent) |
+| `follow_up` | — | — | — | conditional (`concept_explanation` intent) |
 | `general_chat` | — | — | — | — |

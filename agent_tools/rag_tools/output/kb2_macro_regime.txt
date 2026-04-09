@@ -1,12 +1,12 @@
-# kb2 MACRO REGIME — RISK_ON — generated 2026-04-08 21:25
+# kb2 MACRO REGIME — RISK_ON — generated 2026-04-09 14:23
 
 --- macro-regime ---
 Intent tags: trend_prediction, full_analysis, rebalance
-Current market regime: RISK_ON. Risk-on: VIX at 20.2, positive yield curve (0.50pp spread), inflation within range. Conditions favour growth equities and risk assets.
+Current market regime: RISK_ON. Risk-on: VIX at 21.0, positive yield curve (0.52pp spread), inflation within range. Conditions favour growth equities and risk assets.
 
 --- macro-rates ---
 Intent tags: trend_prediction, full_analysis, rebalance
-Federal Funds rate is 3.64 percent. 10-year Treasury yield is 4.34 percent. 2-year Treasury yield is 3.84 percent. Yield curve is positive (0.50pp spread), consistent with growth expectations.
+Federal Funds rate is 3.64 percent. 10-year Treasury yield is 4.33 percent. 2-year Treasury yield is 3.81 percent. Yield curve is positive (0.52pp spread), consistent with growth expectations.
 
 --- macro-economy ---
 Intent tags: trend_prediction, full_analysis
@@ -14,13 +14,13 @@ CPI inflation is 2.66 percent YoY, near the Fed's target. Unemployment rate is 4
 
 --- macro-vix ---
 Intent tags: trend_prediction, full_analysis, rebalance
-VIX at 20.2 — elevated uncertainty, options expensive. VIX has fallen 5.3 points over 30 days.
+VIX at 21.0 — elevated uncertainty, options expensive. VIX has fallen 4.5 points over 30 days.
 
 --- macro-sectors ---
 Intent tags: trend_prediction, rebalance
-30-day sector leaders: Energy (positive 7.04 percent), Materials (positive 0.89 percent), Technology (positive 0.23 percent). Laggards: Healthcare (negative 3.62 percent), Consumer Staples (negative 4.74 percent), Consumer Discretionary (negative 5.64 percent). Growth and cyclical sector leadership — constructive signal for equities.
+30-day sector leaders: Materials (positive 3.98 percent), Energy (positive 3.75 percent), Financials (positive 2.25 percent). Laggards: Healthcare (negative 2.58 percent), Consumer Discretionary (negative 3.10 percent), Consumer Staples (negative 3.17 percent). Growth and cyclical sector leadership — constructive signal for equities.
 
 --- macro-broad-market ---
 Intent tags: trend_prediction, full_analysis
-Broad market 30-day: S&P 500 negative 1.69 percent over 30 days; Nasdaq-100 negative 1.74 percent over 30 days; Russell 2000 positive 0.98 percent over 30 days. Small-cap outperforming large-cap — breadth expansion signal.
+Broad market 30-day: S&P 500 negative 0.06 percent over 30 days; Nasdaq-100 negative 0.15 percent over 30 days; Russell 2000 positive 2.88 percent over 30 days. Small-cap outperforming large-cap — breadth expansion signal.
 

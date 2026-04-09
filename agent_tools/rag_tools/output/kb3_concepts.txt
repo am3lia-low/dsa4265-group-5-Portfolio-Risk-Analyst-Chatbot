@@ -1,4 +1,4 @@
-# kb3 CONCEPTS — 24 definitions — generated 2026-04-08 21:26
+# kb3 CONCEPTS — 24 definitions — generated 2026-04-09 14:24
 
 --- volatility ---
 Label: Volatility (Standard Deviation)
