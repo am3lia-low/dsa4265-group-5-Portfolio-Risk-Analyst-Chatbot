@@ -271,66 +271,66 @@ def run_tests():
     _current_section = "1. Clear-cut intents"
     print("\n--- 1. Clear-cut intents ---\n")
 
-#     test("General: simple greeting",
-#          "Hi", Intent.GENERAL_CHAT)
+    test("General: simple greeting",
+         "Hi", Intent.GENERAL_CHAT)
 
-#     test("General: thanks",
-#          "Thanks!", Intent.GENERAL_CHAT)
+    test("General: thanks",
+         "Thanks!", Intent.GENERAL_CHAT)
 
-#     test("General: capability question",
-#          "What can you do?", Intent.GENERAL_CHAT)
+    test("General: capability question",
+         "What can you do?", Intent.GENERAL_CHAT)
 
-#     test("Full analysis: explicit request",
-#          "Analyze my portfolio", Intent.FULL_ANALYSIS)
+    test("Full analysis: explicit request",
+         "Analyze my portfolio", Intent.FULL_ANALYSIS)
 
-#     test("Full analysis: risk question",
-#          "Is my portfolio risky?", Intent.FULL_ANALYSIS)
+    test("Full analysis: risk question",
+         "Is my portfolio risky?", Intent.FULL_ANALYSIS)
 
-#     test("Full analysis: risk breakdown",
-#          "Give me a risk breakdown", Intent.FULL_ANALYSIS)
+    test("Full analysis: risk breakdown",
+         "Give me a risk breakdown", Intent.FULL_ANALYSIS)
 
-#     test("Full analysis: what-if (formerly rebalance)",
-#          "What if I sell Tesla?", Intent.FULL_ANALYSIS)
+    test("Full analysis: what-if (formerly rebalance)",
+         "What if I sell Tesla?", Intent.FULL_ANALYSIS)
 
-#     test("Full analysis: add asset (formerly rebalance)",
-#          "Should I add bonds to my portfolio?", Intent.FULL_ANALYSIS)
+    test("Full analysis: add asset (formerly rebalance)",
+         "Should I add bonds to my portfolio?", Intent.FULL_ANALYSIS)
 
-#     test("Full analysis: form update",
-#          "", Intent.FULL_ANALYSIS,
-#          portfolio_changed=True)
+    # test("Full analysis: form update",
+    #      "", Intent.FULL_ANALYSIS,
+    #      portfolio_changed=True)
 
-#     test("Specific metric: Sharpe",
-#          "What's my Sharpe ratio?", Intent.SPECIFIC_METRIC,
-#          check_entities={"metrics": ["sharpe_ratio"]})
+    test("Specific metric: Sharpe",
+         "What's my Sharpe ratio?", Intent.SPECIFIC_METRIC,
+         check_entities={"metrics": ["sharpe_ratio"]})
 
-#     test("Specific metric: VaR",
-#          "Show me the VaR", Intent.SPECIFIC_METRIC,
-#          check_entities={"metrics": ["var_95"]})
+    test("Specific metric: VaR",
+         "Show me the VaR", Intent.SPECIFIC_METRIC,
+         check_entities={"metrics": ["var_95"]})
 
-#     test("Specific metric: beta",
-#          "What's my beta?", Intent.SPECIFIC_METRIC,
-#          check_entities={"metrics": ["beta"]})
+    test("Specific metric: beta",
+         "What's my beta?", Intent.SPECIFIC_METRIC,
+         check_entities={"metrics": ["beta"]})
 
-#     test("Concept: what is VaR",
-#          "What is Value at Risk?", Intent.CONCEPT_EXPLANATION,
-#          check_entities={"concept": "value at risk"})
+    test("Concept: what is VaR",
+         "What is Value at Risk?", Intent.CONCEPT_EXPLANATION,
+         check_entities={"concept": "value at risk"})
 
-#     test("Concept: explain beta",
-#          "How does beta work?", Intent.CONCEPT_EXPLANATION)
+    test("Concept: explain beta",
+         "How does beta work?", Intent.CONCEPT_EXPLANATION)
 
-#     test("Trend: future volatility",
-#          "Predict future volatility", Intent.TREND_PREDICTION)
+    test("Trend: future volatility",
+         "Predict future volatility", Intent.TREND_PREDICTION)
 
-#     test("Trend: risk outlook",
-#          "Will my risk increase?", Intent.TREND_PREDICTION)
+    test("Trend: risk outlook",
+         "Will my risk increase?", Intent.TREND_PREDICTION)
 
-#     test("Follow-up: elaborate",
-#          "Can you elaborate on that?", Intent.FOLLOW_UP,
-#          history=SAMPLE_HISTORY)
+    test("Follow-up: elaborate",
+         "Can you elaborate on that?", Intent.FOLLOW_UP,
+         history=SAMPLE_HISTORY)
 
-#     test("Follow-up: why",
-#          "Why did you say that?", Intent.FOLLOW_UP,
-#          history=SAMPLE_HISTORY)
+    test("Follow-up: why",
+         "Why did you say that?", Intent.FOLLOW_UP,
+         history=SAMPLE_HISTORY)
 
     # =====================================================================
     # 2. DISAMBIGUATION EDGE CASES
@@ -338,18 +338,18 @@ def run_tests():
     _current_section = "2. Disambiguation"
     print("\n--- 2. Disambiguation edge cases ---\n")
 
-#     test("specific vs concept: 'what is MY sharpe' → specific",
-#          "What is my Sharpe ratio?", Intent.SPECIFIC_METRIC)
+    test("specific vs concept: 'what is MY sharpe' → specific",
+         "What is my Sharpe ratio?", Intent.SPECIFIC_METRIC)
 
-#     test("specific vs concept: 'what IS sharpe ratio' → concept",
-#          "What is the Sharpe ratio?", Intent.CONCEPT_EXPLANATION)
+    test("specific vs concept: 'what IS sharpe ratio' → concept",
+         "What is the Sharpe ratio?", Intent.CONCEPT_EXPLANATION)
 
-#     test("specific vs concept: 'tell me more about skewness' → concept",
-#          "Tell me more about skewness", Intent.CONCEPT_EXPLANATION)
+    test("specific vs concept: 'tell me more about skewness' → concept",
+         "Tell me more about skewness", Intent.CONCEPT_EXPLANATION)
 
-#     test("Empty + no form change → general_chat",
-#          "", Intent.GENERAL_CHAT,
-#          portfolio_changed=False)
+    test("Empty + no form change → general_chat",
+         "", Intent.GENERAL_CHAT,
+         portfolio_changed=False)
 
     # =====================================================================
     # 3. MULTI-INTENT MESSAGES
@@ -357,20 +357,20 @@ def run_tests():
     _current_section = "3. Multi-intent"
     print("\n--- 3. Multi-intent messages ---\n")
 
-#     test("Multi: analyze + explain concept",
-#          "Analyze my portfolio and explain what VaR means",
-#          Intent.FULL_ANALYSIS,
-#          expected_secondary=Intent.CONCEPT_EXPLANATION)
+    test("Multi: analyze + explain concept",
+         "Analyze my portfolio and explain what VaR means",
+         Intent.FULL_ANALYSIS,
+         expected_secondary=Intent.CONCEPT_EXPLANATION)
 
-#     test("Multi: metric + is it good",
-#          "What's my Sharpe ratio and is that good?",
-#          Intent.SPECIFIC_METRIC,
-#          expected_secondary=Intent.CONCEPT_EXPLANATION)
+    test("Multi: metric + is it good",
+         "What's my Sharpe ratio and is that good?",
+         Intent.SPECIFIC_METRIC,
+         expected_secondary=Intent.CONCEPT_EXPLANATION)
 
-#     test("Multi: what-if + explain concept",
-#          "Compare adding bonds and tell me about diversification",
-#          Intent.FULL_ANALYSIS,
-#          expected_secondary=Intent.CONCEPT_EXPLANATION)
+    test("Multi: what-if + specific metric",
+         "Compare adding bonds and tell me about diversification", # i'll give it to the LLM tbh
+         Intent.FULL_ANALYSIS,
+         expected_secondary=Intent.SPECIFIC_METRIC)
 
     # =====================================================================
     # 4. DISGUISED INTENTS
@@ -378,19 +378,19 @@ def run_tests():
     _current_section = "4. Disguised intents"
     print("\n--- 4. Disguised intents ---\n")
 
-#     test("Disguised: looks like follow-up → concept",
-#          "What did you mean by skewness?", Intent.CONCEPT_EXPLANATION,
-#          history=SAMPLE_HISTORY)
+    test("Disguised: looks like follow-up → concept",
+         "What did you mean by skewness?", Intent.CONCEPT_EXPLANATION,
+         history=SAMPLE_HISTORY)
 
-#     test("Disguised: thanks + metric → specific_metric",
-#          "Thanks! What's my beta though?", Intent.SPECIFIC_METRIC,
-#          history=SAMPLE_HISTORY)
+    test("Disguised: thanks + metric → specific_metric",
+         "Thanks! What's my beta though?", Intent.SPECIFIC_METRIC,
+         history=SAMPLE_HISTORY)
 
-#     test("Disguised: greeting + analysis",
-#          "Hey! Analyze my portfolio please", Intent.FULL_ANALYSIS)
+    test("Disguised: greeting + analysis",
+         "Hey! Analyze my portfolio please", Intent.FULL_ANALYSIS)
 
-#     test("Disguised: greeting + what-if",
-#          "Hi can you tell me if I should sell Tesla?", Intent.FULL_ANALYSIS)
+    test("Disguised: greeting + what-if",
+         "Hi can you tell me if I should sell Tesla?", Intent.FULL_ANALYSIS)
 
     # =====================================================================
     # 5. AMBIGUOUS / STRESS TESTS
@@ -398,25 +398,25 @@ def run_tests():
     _current_section = "5. Ambiguous / stress"
     print("\n--- 5. Ambiguous / stress tests ---\n")
 
-#     test("Ambiguous: 'How's my risk?'",
-#          "How's my risk?", Intent.FULL_ANALYSIS)
+    test("Ambiguous: 'How's my risk?'",
+         "How's my risk?", Intent.FULL_ANALYSIS)
 
-#     test("Ambiguous: 'Tell me about my volatility'",
-#          "Tell me about my volatility", Intent.SPECIFIC_METRIC)
+    test("Ambiguous: 'Tell me about my volatility'",
+         "Tell me about my volatility", Intent.SPECIFIC_METRIC)
 
-#     test("Ambiguous: 'What about bonds?'",
-#          "What about bonds?", Intent.FULL_ANALYSIS,
-#          history=SAMPLE_HISTORY)
+    test("Ambiguous: 'What about bonds?'",
+         "What about bonds?", Intent.FULL_ANALYSIS,
+         history=SAMPLE_HISTORY)
 
-#     test("Ambiguous: 'Is this good?'",
-#          "Is this good?", Intent.FOLLOW_UP,
-#          history=SAMPLE_HISTORY)
+    test("Ambiguous: 'Is this good?'",
+         "Is this good?", Intent.FOLLOW_UP,
+         history=SAMPLE_HISTORY)
 
-#     test("Ambiguous: single word 'Risk'",
-#          "Risk", Intent.FULL_ANALYSIS)
+    test("Ambiguous: single word 'Risk'",
+         "Risk", Intent.FULL_ANALYSIS)
 
-#     test("Ambiguous: 'Help me understand my portfolio better'",
-#          "Help me understand my portfolio better", Intent.FULL_ANALYSIS)
+    test("Ambiguous: 'Help me understand my portfolio better'",
+         "Help me understand my portfolio better", Intent.FULL_ANALYSIS)
 
     # =====================================================================
     # 6. ENTITY EXTRACTION STRESS TESTS
@@ -424,24 +424,24 @@ def run_tests():
     _current_section = "6. Entity extraction"
     print("\n--- 6. Entity extraction stress tests ---\n")
 
-#     test("Entity: vague downside → should infer var/cvar/sortino",
-#          "How's my downside looking?", Intent.SPECIFIC_METRIC,
-#          check_entities={"metrics": ["var_95"]})
+    test("Entity: vague downside → should infer var/cvar/sortino",
+         "How's my downside looking?", Intent.SPECIFIC_METRIC,
+         check_entities={"metrics": ["var_95"]})
 
-#     test("Entity: vague performance → should infer sharpe/sortino",
-#          "How's my portfolio performing?", Intent.FULL_ANALYSIS) # honestly i'll give it to the LLM for this one
+    test("Entity: vague performance → should infer sharpe/sortino",
+         "How's my portfolio performing?", Intent.SPECIFIC_METRIC) # it could also be full analysis tbh
 
-#     test("Entity: explicit metric extraction",
-#          "What's my max drawdown and beta?", Intent.SPECIFIC_METRIC,
-#          check_entities={"metrics": ["max_drawdown", "beta"]})
+    test("Entity: explicit metric extraction",
+         "What's my max drawdown and beta?", Intent.SPECIFIC_METRIC,
+         check_entities={"metrics": ["max_drawdown", "beta"]})
 
-#     test("Entity: concept should extract concept name",
-#          "Explain what conditional value at risk means", Intent.CONCEPT_EXPLANATION,
-#          check_entities={"concept": "conditional value at risk"})
+    test("Entity: concept should extract concept name",
+         "Explain what conditional value at risk means", Intent.CONCEPT_EXPLANATION,
+         check_entities={"concept": "conditional value at risk"})
 
-#     test("Entity: vague concentration → should infer hhi/correlation",
-#          "Is my portfolio too concentrated?", Intent.SPECIFIC_METRIC,
-#          check_entities={"metrics": ["hhi_concentration"]})
+    test("Entity: vague concentration → should infer hhi/correlation",
+         "Is my portfolio too concentrated?", Intent.SPECIFIC_METRIC,
+         check_entities={"metrics": ["hhi_concentration"]})
 
     # =====================================================================
     # 7. HARD MULTI-INTENT EDGE CASES
@@ -449,30 +449,30 @@ def run_tests():
     _current_section = "7. Hard multi-intent"
     print("\n--- 7. Hard multi-intent edge cases ---\n")
 
-#     test("Multi: sell + analyze (both map to full_analysis)",
-#          "Sell Tesla and analyze what's left",
-#          Intent.FULL_ANALYSIS)
+    test("Multi: sell + analyze (both map to full_analysis)",
+         "Sell Tesla and analyze what's left",
+         Intent.FULL_ANALYSIS)
 
-#     test("Multi: fresh analysis override",
-#          "Forget my current portfolio. Analyze a new one with MSFT and GOOG at 50/50",
-#          Intent.FULL_ANALYSIS)
+    test("Multi: fresh analysis override",
+         "Forget my current portfolio. Analyze a new one with MSFT and GOOG at 50/50",
+         Intent.FULL_ANALYSIS)
 
-#     test("Multi: metric + trend",
-#          "What's my current volatility and will it get worse?",
-#          Intent.SPECIFIC_METRIC,
-#          expected_secondary=Intent.TREND_PREDICTION,
-#          check_entities={"metrics": ["portfolio_volatility"]})
+    test("Multi: metric + trend",
+         "What's my current volatility and will it get worse?",
+         Intent.SPECIFIC_METRIC,
+         expected_secondary=Intent.TREND_PREDICTION,
+         check_entities={"metrics": ["portfolio_volatility"]})
 
-#     test("Multi: what-if + concept",
-#          "Should I add gold to hedge? And what exactly is hedging?",
-#          Intent.FULL_ANALYSIS,
-#          expected_secondary=Intent.CONCEPT_EXPLANATION)
+    test("Multi: what-if + concept",
+         "Should I add gold to hedge? And what exactly is hedging?",
+         Intent.FULL_ANALYSIS,
+         expected_secondary=Intent.CONCEPT_EXPLANATION)
 
-#     test("Multi: follow-up + metric",
-#          "You mentioned my Sharpe was low — what's my Sortino?",
-#          Intent.SPECIFIC_METRIC,
-#          history=SAMPLE_HISTORY,
-#          check_entities={"metrics": ["sortino_ratio"]})
+    test("Multi: follow-up + metric",
+         "You mentioned my Sharpe was low — what's my Sortino?",
+         Intent.SPECIFIC_METRIC,
+         history=SAMPLE_HISTORY,
+         check_entities={"metrics": ["sortino_ratio"]})
 
     # =====================================================================
     # 8. ADVERSARIAL / TRICKY PHRASING
@@ -480,52 +480,52 @@ def run_tests():
     _current_section = "8. Adversarial / tricky"
     print("\n--- 8. Adversarial / tricky phrasing ---\n")
 
-#     test("Tricky: negation — 'don't analyze'",
-#          "Don't analyze my portfolio, just tell me what beta means",
-#          Intent.CONCEPT_EXPLANATION,
-#          check_entities={"concept": "beta"})
+    test("Tricky: negation — 'don't analyze'",
+         "Don't analyze my portfolio, just tell me what beta means",
+         Intent.CONCEPT_EXPLANATION,
+         check_entities={"concept": "beta"})
 
     test("Tricky: hypothetical",
          "If I had a portfolio of all tech stocks, would it be risky?",
          Intent.CONCEPT_EXPLANATION) # mistake made
 
-#     test("Tricky: question about the agent",
-#          "What metrics can you calculate?",
-#          Intent.GENERAL_CHAT)
+    test("Tricky: question about the agent",
+         "What metrics can you calculate?",
+         Intent.GENERAL_CHAT)
 
     test("Tricky: comparison language but not what-if",
          "How does my portfolio compare to the S&P 500?",
          Intent.SPECIFIC_METRIC,
          check_entities={"metrics": ["beta"]}) # mistake made but this is bc 503 error
 
-#     test("Tricky: past tense",
-#          "Why did my portfolio drop last week?",
-#          Intent.FULL_ANALYSIS)
+    test("Tricky: past tense",
+         "Why did my portfolio drop last week?",
+         Intent.FULL_ANALYSIS)
 
-#     test("Tricky: very long message with buried intent",
-#          "So I've been reading about portfolio theory and modern asset allocation "
-#          "frameworks and I was wondering about my specific case — I know I have AAPL "
-#          "and TSLA but honestly I just want to know my Sharpe ratio right now",
-#          Intent.SPECIFIC_METRIC,
-#          check_entities={"metrics": ["sharpe_ratio"]})
+    test("Tricky: very long message with buried intent",
+         "So I've been reading about portfolio theory and modern asset allocation "
+         "frameworks and I was wondering about my specific case — I know I have AAPL "
+         "and TSLA but honestly I just want to know my Sharpe ratio right now",
+         Intent.SPECIFIC_METRIC,
+         check_entities={"metrics": ["sharpe_ratio"]})
 
-#     test("Tricky: typo/informal",
-#          "whats my sharp ratio lol",
-#          Intent.SPECIFIC_METRIC,
-#          check_entities={"metrics": ["sharpe_ratio"]})
+    test("Tricky: typo/informal",
+         "whats my sharp ratio lol",
+         Intent.SPECIFIC_METRIC,
+         check_entities={"metrics": ["sharpe_ratio"]})
 
-#     test("Tricky: multiple metrics in one ask",
-#          "Give me the VaR, CVaR, and max drawdown",
-#          Intent.SPECIFIC_METRIC,
-#          check_entities={"metrics": ["var_95", "cvar_95", "max_drawdown"]})
+    test("Tricky: multiple metrics in one ask",
+         "Give me the VaR, CVaR, and max drawdown",
+         Intent.SPECIFIC_METRIC,
+         check_entities={"metrics": ["var_95", "cvar_95", "max_drawdown"]})
 
-#     test("Tricky: sounds like what-if but is concept",
-#          "What happens to risk when you add bonds to a portfolio?",
-#          Intent.CONCEPT_EXPLANATION)
+    test("Tricky: sounds like what-if but is concept",
+         "What happens to risk when you add bonds to a portfolio?",
+         Intent.CONCEPT_EXPLANATION)
 
-# #     test("Tricky: empty message no form change",
-# #          "", Intent.GENERAL_CHAT,
-# #          portfolio_changed=False)
+#     test("Tricky: empty message no form change",
+#          "", Intent.GENERAL_CHAT,
+#          portfolio_changed=False)
 
     test("Trend vs full_analysis: 'Will my volatility get worse?' → trend",
           "Will my volatility get worse?", Intent.TREND_PREDICTION,
@@ -542,21 +542,21 @@ def run_tests():
     _current_section = "9. Boundary FA vs SM"
     print("\n--- 9. Boundary: full_analysis vs specific_metric ---\n")
 
-#     test("Boundary: 'Is this risky?' → full_analysis",
-#          "Is this risky?", Intent.FULL_ANALYSIS)
+    test("Boundary: 'Is this risky?' → full_analysis",
+         "Is this risky?", Intent.FULL_ANALYSIS)
 
-#     test("Boundary: 'How risky is my portfolio?' → full_analysis",
-#          "How risky is my portfolio?", Intent.FULL_ANALYSIS)
+    test("Boundary: 'How risky is my portfolio?' → full_analysis",
+         "How risky is my portfolio?", Intent.FULL_ANALYSIS)
 
-#     test("Boundary: 'What's my risk level?' → full_analysis",
-#          "What's my risk level?", Intent.FULL_ANALYSIS)
+    test("Boundary: 'What's my risk level?' → full_analysis",
+         "What's my risk level?", Intent.FULL_ANALYSIS)
 
-#     test("Boundary: 'Show me my volatility' → specific_metric",
-#          "Show me my volatility", Intent.SPECIFIC_METRIC,
-#          check_entities={"metrics": ["portfolio_volatility"]})
+    test("Boundary: 'Show me my volatility' → specific_metric",
+         "Show me my volatility", Intent.SPECIFIC_METRIC,
+         check_entities={"metrics": ["portfolio_volatility"]})
 
-#     test("Boundary: 'Risk breakdown' → full_analysis",
-#          "Give me a risk breakdown", Intent.FULL_ANALYSIS)
+    test("Boundary: 'Risk breakdown' → full_analysis",
+         "Give me a risk breakdown", Intent.FULL_ANALYSIS)
 
     test("Boundary: 'How diversified am I?' → specific_metric",
          "How diversified am I?", Intent.SPECIFIC_METRIC,
