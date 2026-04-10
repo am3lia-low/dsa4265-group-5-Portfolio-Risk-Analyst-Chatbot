@@ -26,7 +26,7 @@ def render_sidebar():
     st.sidebar.header("Your Portfolio")
 
     investment_input = st.sidebar.text_input(
-        "Investment Amount",
+        "Investment Amount (US$)",
         value=str(st.session_state.portfolio["investment_amount"] or 0.0),
         disabled=st.session_state.portfolio_ready,
     )
