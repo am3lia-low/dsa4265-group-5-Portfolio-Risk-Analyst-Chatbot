@@ -1,9 +1,5 @@
 
-import pandas as pd
 import numpy as np
-import datetime
-from agent_tools.data_tools.fetch_price_data import fetch_price_data
-from agent_tools.data_tools.calculate_returns import calculate_returns
 
 # def risk_metrics_tool(returns: pd.DataFrame, weights: np.ndarray) -> dict:
 #     """
@@ -140,25 +136,6 @@ def current_portfolio_risk_tool(portfolio: dict, all_metrics: dict):
     list[dict]
         Risk results for each portfolio.
     """
-
-    tickers = portfolio["tickers"]
-    weights = np.array(portfolio["weights"], dtype=float)
-
-    # Normalize weights (handles % like 50,30,20)
-    weights = weights / weights.sum()
-
-    # Convert to dict format if needed elsewhere
-    tickers_weights = dict(zip(tickers, weights))
-
-    # Fetch + compute
-    today = datetime.date.today()
-    prices = fetch_price_data(
-        tickers,
-        end=str(today),
-        start=str(today.replace(year=today.year - 5)) # take data from 5 years ago
-    )
-
-    # returns = calculate_returns(prices, method="simple")
 
     scoring = risk_scoring_tool(risk_metrics_tool(all_metrics))
 
