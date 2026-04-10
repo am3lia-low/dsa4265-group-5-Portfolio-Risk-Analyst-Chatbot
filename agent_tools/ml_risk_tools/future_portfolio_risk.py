@@ -107,6 +107,9 @@ class PortfolioDataset(Dataset):
         return self.X[idx], self.y_vol[idx], self.y_dir[idx]
 
 model = LSTMModel(input_size=1)
+_weights_path = os.path.join(os.path.dirname(__file__), 'model_weights.pth')
+model.load_state_dict(torch.load(_weights_path, weights_only=True))
+model.eval()
 
 threshold = 0.5
 
@@ -200,22 +203,12 @@ def future_portfolio_risk(portfolio, window=60):
 
     """
 
-    # i put portfolio_to_lstm_input here instead so i can just export future_portfolio_risk
     X_input = portfolio_to_lstm_input(portfolio, window=60)
 
-    all_preds = []
-    all_targets = []
-    all_probs = []
     # Ensure input is tensor
     if not torch.is_tensor(X_input):
         X_input = torch.tensor(X_input[0], dtype=torch.float32)  # unwrap list → (1, window, 1)
-        
-    # Load the saved state_dict
-    _weights_path = os.path.join(os.path.dirname(__file__), 'model_weights.pth')
-    model.load_state_dict(torch.load(_weights_path))
 
-    # Set the model to 
-    model.eval()
     with torch.no_grad():
         vol_pred, dir_pred = model(X_input)
         

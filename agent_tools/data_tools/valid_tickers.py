@@ -17,6 +17,8 @@ def valid_tickers(tickers: str | Sequence[str]) -> tuple[bool, list[str]]:
     """
     Return whether every ticker looks tradeable on Yahoo and has recent bars.
 
+    Fetches all tickers in a single batched yfinance request.
+
     Returns
     -------
     ok : bool
@@ -28,15 +30,16 @@ def valid_tickers(tickers: str | Sequence[str]) -> tuple[bool, list[str]]:
     if not syms:
         return False, ["<empty>"]
 
-    bad: list[str] = []
-    for sym in syms:
-        t = yf.Ticker(sym)
-        hist = t.history(period="5d")
-        if hist.empty:
-            bad.append(sym)
-            continue
-        # extra guard: yfinance sometimes returns a row of NaNs
-        if hist["Close"].dropna().empty:
-            bad.append(sym)
+    data = yf.download(syms, period="5d", auto_adjust=True, progress=False, threads=True)
+
+    if len(syms) == 1:
+        close = data["Close"].dropna()
+        bad = [syms[0]] if close.empty else []
+    else:
+        close = data["Close"]
+        bad = [
+            sym for sym in syms
+            if sym not in close.columns or close[sym].dropna().empty
+        ]
 
     return (len(bad) == 0, bad)

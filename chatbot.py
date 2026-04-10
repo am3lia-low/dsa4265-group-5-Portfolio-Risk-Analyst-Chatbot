@@ -11,7 +11,11 @@ from ui.chat import render_chat_history, render_status
 from agent_tools.workflow_tools import classify_intent, route_and_execute
 from agent_tools.workflow_tools.agent_llm import KeyRotator
 
-_key_rotator = KeyRotator()
+@st.cache_resource
+def _get_key_rotator():
+    return KeyRotator()
+
+_key_rotator = _get_key_rotator()
 
 
 # === Page setup ===
