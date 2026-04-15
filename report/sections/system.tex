@@ -2,7 +2,37 @@
 \label{sec:system}
 
 \subsection{Architecture overview}
-\todo{Diagram or prose: UI $\rightarrow$ validation $\rightarrow$ data layer $\rightarrow$ quant $\rightarrow$ RAG $\rightarrow$ LLM response.}
+The portfolio risk analyst is structured as a hybrid between an autonomous agent and a set of fixed agentic workflows. At the top level, it behaves as an agent. It receives a user query, classifies the intent, and selects a workflow to execute. Once an intent is identified, however, the system follows a predefined sequence of function calls rather than granting the LLM full autonomy over tool selection.
+
+This design was deliberate. Because if we were to use a fully autonomous agent, decisions would rely on the LLM to determine which tools to invoke at each step, introducing variability in the depth and consistency of the analysis. In a system with well-defined computation dependencies (e.g., the covariance matrix must be computed before portfolio volatility, risk contribution, and average pairwise correlation can be derived), an LLM that skips or reorders steps can cause silent downstream failures. Fixed workflows guarantee that every relevant module executes in the correct order, ensuring the LLM always receives a complete picture before generating its response. This sacrifices some flexibility: a fully autonomous agent could blend intents more fluidly or adapt to unforeseen queries without rigid routing. However, given a known set of intents and a deterministic computation pipeline, the gains in reliability, debuggability, and testability outweigh the loss of adaptiveness.
+
+
+\begin{figure}[H]
+    \centering
+    \fbox{\includegraphics[width=0.75\textwidth]{archi_overview_diagram.png}}
+    \caption{Diagram illustration of the overall chatbot architecture.}
+    \label{fig:archi_overview}
+\end{figure}
+
+As shown in Figure~\ref{fig:archi_overview}, the system is organised into several key layers. At the \textbf{UI layer}, the user submits a query along with their portfolio via a Streamlit interface. The \textbf{intent layer} classifies the message into one of six intents (full analysis, specific metric, concept explanation, trend prediction, follow-up, or general chat) and extracts any referenced metrics or concepts required downstream.
+
+Once classified, intents are routed through a \textbf{shared computation pipeline} managed by a backend orchestrator function, \texttt{route\_and\_execute}, which computes the information required for each intent and updates the cache accordingly. If the relevant data has already been computed and the portfolio has not changed, it is retrieved from cache to avoid redundant computation.
+
+Furthermore, the pipeline comprises four main components:
+
+\begin{itemize}
+    \item A \textbf{data layer} that validates input tickers and extracts the price and return data required by the other components.
+    
+    \item A \textbf{quant component} that produces 12 risk metrics — including portfolio volatility, VaR, Sharpe ratio, beta, and skewness — from a covariance matrix computed once and reused downstream.
+    
+    \item An \textbf{ML component} consisting of a logic-based risk classifier (outputting a Low/Medium/High label) and an LSTM model (forecasting volatility trends with a confidence score).
+    
+    \item A \textbf{RAG layer} that takes the user query and portfolio tickers as input and searches across four specialised knowledge bases: Tickers, Macro, Concepts, and Strategies.
+\end{itemize}
+
+These components, and the workflow functions are detailed in the sections below.
+
+Finally, all outputs converge at the \textbf{explanation layer}, where a \texttt{build\_prompt} function aggregates the risk metrics (tagged with their benchmark labels), RAG chunks, the risk classification, and the LSTM forecast into a single prompt for the LLM, which generates the user-facing explanation. A post-generation hallucination guard (\texttt{\_check\_numbers}) then validates that any numerical claims are consistent with the computed metrics before the response is returned.
 
 
 \subsection{User interface}
