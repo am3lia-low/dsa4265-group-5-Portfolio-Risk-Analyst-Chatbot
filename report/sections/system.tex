@@ -41,7 +41,7 @@ The user interface for this application was developed using Streamlit, a Python-
 
 \begin{figure}[H]
     \centering
-    \fbox{\includegraphics[width=0.75\textwidth]{ui_start_screen.png}}
+    \fbox{\includegraphics[width=0.85\textwidth]{ui_start_screen.png}}
     \caption{Initial interface of the portfolio analysis chatbot.}
     \label{fig:ui_start}
 \end{figure}
@@ -64,17 +64,434 @@ To support dynamic interaction, session state management is implemented using St
 From a user experience perspective, the interface is designed to be intuitive and guided. Users receive immediate feedback on their inputs, are prevented from making invalid queries, and can clearly follow the progression from portfolio input to analysis. Visual cues, such as confirmation messages and loading indicators, further enhance usability and provide transparency during system processing. Overall, the design promotes a structured and user-friendly interaction, ensuring that users can efficiently navigate the application and obtain meaningful insights from their portfolio.
 
 
-
-
 \subsection{Key modules}
-\todo{\texttt{agent\_tools/data\_tools}, quant (if separate), \texttt{RAG/}, \texttt{workflow\_tools} (classifier, orchestrator).}
 
-\subsubsection{Data Tools}
+\subsubsection{Data Tools} 
+% to add
+
+
 \subsubsection{Main Workflow Tools}
+Every user message flows through two top-level functions in sequence:
+
+\qquad \texttt{classify\_intent $\rightarrow$ route\_and\_execute}
+
+\texttt{classify\_intent} is called first and independently. \texttt{route\_and\_execute} then runs
+all computation stages and, as its final step, calls \texttt{generate\_explanation} internally before returning the result to the caller.\\
+
+i.e. The workflow may be described as such:
+
+\texttt{classify\_intent:}
+
+	\qquad returns \texttt{IntentResult}
+
+\texttt{route\_and\_execute:}
+
+    \qquad Stages 1 - 4: computation tools
+
+    \qquad Stage 5: assemble \texttt{ExplanationContext}
+
+    \qquad \texttt{generate\_explanation $\leftarrow$ called inside route\_and\_execute}
+
+        \qquad \qquad returns \texttt{WorkflowResult(content, intent, cache)}\\
+
+Each function has a strict input/output contract, so each stage can be flexibly tested or replaced. The four computation tools (quantitative metrics, rule-based risk classifier, LSTM forecaster, and RAG) are treated as interchangeable black boxes from the pipeline's perspective.
+
+
+\paragraph{\texttt{classify\_intent}}
+Its main role is to classify user messages into a primary intent, an optional secondary intent, and extracted entities (metric keys, concept names) before any computation runs. It uses gemini-2.5-flash-lite (temperature = 0.0), because this step runs on every single message.\\
+
+\textbf{Pipeline}
+
+\begin{enumerate}
+    \item \textbf{Context assembly:}
+     A structured prompt is built from three sources:
+
+
+    \begin{itemize}
+        \item \textbf{portfolio\_changed flag}, injected as a first-class signal rather than incidental context, so the model can distinguish "user asked a question" from "user changed their portfolio silently".
+        
+        \item The \textbf{last 3–4 history turns}, each hard-truncated to 200 characters to prevent token blowout on long prior responses. History lets the classifier resolve pronouns and follow-up references ("that", "it", "this") back to their prior topic without re-stating context.
+        
+        \item The \textbf{current message is placed last}, so it sits closest to the model's attention window at generation time.
+    \end{itemize}
+
+    \item \textbf{Schema-constrained LLM call:}\\
+    \texttt{response\_mime\_type="application/json"} combined with\\ \texttt{response\_json\_schema=IntentClassification.model\_json\_schema()} forces Gemini to emit valid, typed JSON structures, hence eliminating an entire class of parsing bugs rather than free-text JSON extraction with regex. The Pydantic schema is as such:\\
+
+    \begin{verbatim}
+        class IntentClassification(BaseModel):
+            primary_intent:    str  # one of 6 intent names
+            confidence:        float
+            reasoning:         str
+            secondary_intent:  Optional[str]
+            extracted_metrics: Optional[list[str]]  # canonical metric keys
+            extracted_concept: Optional[str]
+    \end{verbatim}
+
+    \item \textbf{Fuzzy-match safety net:}\\
+    The raw intent string is first tried as a direct enum lookup. If the model returns a variant like “concept explaining” instead of “concept explanation”, it would cause downstream failures. Hence, an \textbf{INTENT\_ALIASES dict} resolves it via substring matching. Unresolvable values \textbf{fall back to GENERAL\_CHAT}. This means the classifier degrades gracefully under LLM output drift without crashing, and the fallback is always a safe, user-visible response rather than an unhandled exception.
+
+    \item \textbf{Returns an \texttt{IntentResult} dataclass:}\\
+    This is the object to be consumed by \texttt{route\_and\_execute}. The \texttt{rextracted\_metrics} and \texttt{extracted\_concept} fields propagate all the way through to \texttt{generate\_explanation}, where they control which data is surfaced and what is highlighted in the response.
+
+\end{enumerate}
+
+\textbf{6-Intent Taxonomy}\\
+The system supports exactly 6 intents. The taxonomy was deliberately kept small. Rebalancing was originally a 7th intent, but was merged into FULL\_ANALYSIS as both require the same computation path, and having near-synonym intents caused classifier confusion during testing.\\
+
+\begin{tabular}{|l|p{10cm}|}
+\hline
+Intents & Description \\
+\hline
+
+\texttt{FULL\_ANALYSIS} &
+- \textbf{holistic risk assessment}, or \newline
+- questions about changing \textbf{portfolio composition} \newline
+- \textbf{comprehensive answer}, not a single number\\
+\hline
+
+\texttt{SPECIFIC\_METRIC} &
+- \textbf{named or inferable metric} for the user's portfolio \newline
+- requires \texttt{extracted\_metrics} to be populated\\
+\hline
+
+\texttt{CONCEPT\_EXPLANATION} &
+- educational, definitional, hypothetical \newline
+- e.g. “what is X”, “how does X work”, “what if I had all tech stocks?”\\
+\hline
+
+\texttt{TREND\_PREDICTION} &
+- forward-looking, triggers LSTM forecast tool\\
+\hline
+
+\texttt{FOLLOW\_UP} &
+- clarification of prior response with no new topic \newline
+- strictly distinguished from \texttt{CONCEPT\_EXPLANATION:} “what do you mean by skewness?” vs \texttt{FOLLOW\_UP:} “why did you say my skewness is excellent?”\\
+\hline
+
+\texttt{GENERAL\_CHAT} &
+- greetings, thanks, capability questions, off-topic\\
+\hline
+
+\end{tabular}\\\\
+
+\textbf{Disambiguation Rules in the System Prompt}\\
+The classifier's system prompt (\texttt{CLASSIFY\_SYSTEM\_PROMPT}) encodes formal decision rules for most possible ambiguous cases encountered during testing. These rules encode domain-specific nuance that the model cannot reliably infer from intent names alone. Here are some examples:\\
+
+MY vs. THE:\\
+\qquad \qquad "What's MY Sharpe ratio?" $\rightarrow$ \texttt{specific\_metric} (possessive = their portfolio)\newline
+\qquad \qquad "What IS the Sharpe ratio?" $\rightarrow$ \texttt{concept\_explanation} (definitional = the concept)\\
+
+Vague risk questions $\rightarrow$ \texttt{full\_analysis}:\newline
+\qquad \qquad "Is this risky?", "How's my risk?", "Give me a risk breakdown" all map to \texttt{full\_analysis}.\newline
+\qquad \qquad Rule: if you cannot identify a specific named metric, default to \texttt{full\_analysis} rather than \texttt{specific\_metric}.\\
+
+Greetings with embedded queries:\newline
+\qquad \qquad "Hi! Analyse my portfolio" $\rightarrow$ \texttt{full\_analysis}. The greeting is incidental; Only classify as \texttt{general\_chat} when the ENTIRE message is a greeting or thanks.\\
+
+\textbf{Entity Extraction}
+
+For \texttt{SPECIFIC\_METRIC}, \texttt{extracted\_metrics} must always be populated, even for vague phrasing. Inference mappings are explicitly encoded in the system prompt:
+
+\begin{verbatim}
+    "downside" / "downside risk"   → [var_95, cvar_95, sortino_ratio]
+    "performance" / "returns"      → [sharpe_ratio, sortino_ratio]
+    "concentration"                → [hhi_concentration, avg_pairwise_correlation]
+    "tail risk" / "extreme events" → [excess_kurtosis, cvar_95]
+    "market sensitivity"           → [beta]
+\end{verbatim}
+
+These keys match exactly the keys produced by \texttt{calculate\_all\_metrics}, so they propagate into the orchestrator's metric-fetching and filtering logic without any translation layer. For \texttt{CONCEPT\_EXPLANATION}, \texttt{extracted\_concept} holds a plain-language concept name (e.g. "conditional value at risk") that is passed directly as the RAG retrieval query.\\
+
+\textbf{Key Design Decisions}
+\begin{itemize}
+    \item \textbf{Flash-Lite} for classification: heavier compute is reserved for explanation generation, where reasoning depth directly affects response quality.
+    \item \textbf{Schema-constrained} output: one source of validation truth; no brittle regex. temperature = 0.0: deterministic classification matters when users are making financial decisions and expect consistent behaviour across repeated queries.
+    \item \textbf{Fuzzy-match + \texttt{GENERAL\_CHAT}} fallback: the pipeline never crashes on the classifier output drift. It degrades to a safe, helpful response.
+    \item \textbf{Rate limit errors (\texttt{HTTP 429})} are re-raised unconditionally so the KeyRotator in the caller can retry on the next API key. All other exceptions are caught and return the safe fallback.
+\end{itemize}
+
+
+\paragraph{\texttt{route\_and\_execute}}
+
+This function acts as the orchestration backbone. It receives the \texttt{IntentResult}, decides which of the four tools to run, executes them in the right order with per-turn caching to avoid redundant computation, assembles all their outputs into a precisely scoped \texttt{ExplanationContext}, and calls \texttt{generate\_explanation}.\\
+
+\textbf{Pipeline}
+
+\begin{enumerate}
+    \item \textbf{Intent-to-tool mapping} via set intersection. One line per flag with no branching:
+
+    \begin{verbatim}
+        _NEEDS_METRICS = {FULL_ANALYSIS, SPECIFIC_METRIC, TREND_PREDICTION}
+        _NEEDS_RISK    = {FULL_ANALYSIS}
+        _NEEDS_LSTM    = {FULL_ANALYSIS, TREND_PREDICTION}
+
+        intents       = {primary} | ({secondary} if secondary else set())
+        needs_metrics = bool(intents & _NEEDS_METRICS)
+        needs_risk    = bool(intents & _NEEDS_RISK)
+        needs_lstm    = bool(intents & _NEEDS_LSTM)
+    \end{verbatim}
+
+    The union of primary and secondary intents reflects a dual-intent message (e.g. \texttt{specific\_metric} + \texttt{trend\_prediction}) that sets all the correct flags in a single pass with no edge-case coding needed.
+
+    \item \textbf{Cache staleness check} (per stage):
+    \begin{verbatim}
+        metrics_stale = portfolio_changed OR (cache.get("metrics") is None)
+        risk_stale    = portfolio_changed OR (cache.get("risk_level") is None)
+        lstm_stale    = portfolio_changed OR
+                                         (cache.get("trend_forecast") is None)
+    \end{verbatim}
+
+    A shallow copy of the prior-turn cache is made at the start of the function. Keys whose data were not recomputed get carried forward, unchanged, into the new turn's cache. Only keys whose corresponding tool has been executed, gets overwritten. This means a user asking five follow-up questions about the \textbf{same portfolio} triggers only RAG + LLM on turns 2–5; the expensive compute stages (price fetch, metrics, classifier, LSTM) \textbf{run once, and their results persist}.
+    
+    \texttt{portfolio\_changed} is a first-class \textbf{invalidation signal}. If the user loads a \textbf{new portfolio} mid-conversation, every \textbf{staleness flag fires} and all four stages recompute from scratch. This is also what activates comparison mode in the explanation layer.
+
+    \item Stages 1 - 4, \textbf{Tool execution} (conditional):
+    Each stage runs only when its \textbf{needs\_*} flag is True, as well as its \textbf{*\_stale} flag is \textbf{True}. The four tools are listed in the table below. Their designs, workflows and performances are extensively detailed in the subsequent sections below.
+
+
+\begin{tabular}{|l|p{10cm}|}
+\hline
+Intents & Description \\
+\hline
+
+1. Quantitative metrics &
+- price fetch + 12 risk metrics\newline
+- results stored in \texttt{cache["metrics"]} and \texttt{cache["metric\_benchmarks"]}\\
+\hline
+
+2. Rule-based risk classifier &
+- deterministic composite scoring\newline
+- result stored in \texttt{cache["risk\_level"]}\\
+\hline
+
+3. LSTM volatility forecast &
+- 60-day lookback forward pass\newline
+- result stored in \texttt{cache["trend\_forecast"]}\\
+\hline
+
+4. RAG retrieval &
+- always runs, routes to different knowledge bases depending on intent\newline
+- result stored in \texttt{cache["rag\_context"]}\\
+\hline
+
+\end{tabular}\\\\
+
+    \item \textbf{\texttt{ExplanationContext} assembly} (\texttt{\_build\_explanation\_context}):
+    This step translates the flat cache and IntentResult into a precisely scoped context dict. Some scope rules are applied here:
+
+    \begin{itemize}
+        \item \texttt{clean\_metrics} excludes the nested \texttt{risk\_contribution} dict; risk contributions are passed separately so the explanation layer can handle them distinctly.
+        \item \texttt{requested\_metrics} (from \texttt{IntentResult.extracted\_metrics}) is passed through, so \texttt{generate\_explanation} knows to narrow its response to those metrics only.
+        \item If \texttt{portfolio\_changed = True} and \texttt{old\_cache} is non-empty, the \textbf{previous turn's} metrics, risk contributions, and risk classification are included under \texttt{previous\_*} keys. This is what enables \textbf{before/after comparison mode}, where the LLM sees both portfolios' full data and is instructed to produce a delta, comparative analysis rather than a standalone assessment.
+        \item For dual-intent messages, \texttt{secondary\_intent}, \texttt{secondary\_concept}, and \texttt{secondary\_requested\_metrics} are all populated, giving \texttt{generate\_explanation} the full context to address both requests in one coherent response.
+        \item \texttt{chat\_history} is capped at the \textbf{last 6 messages}, each truncated to 300 characters, to keep the explanation prompt from growing unbounded.
+    \end{itemize}
+
+    \item API call with \textbf{key rotation}:
+    The assembled context dict is passed to \texttt{generate\_explanation} via:
+    \begin{verbatim}
+        _key_rotator.call_with_retry(
+            lambda client: generate_explanation(ctx, client=client)
+        )
+    \end{verbatim}
+
+    The \texttt{KeyRotator} manages a pool of up to 6 API keys. On a \texttt{429}, it \textbf{rotates to the next key and retries automatically}, transparently to both the orchestrator and \texttt{generate\_explanation}. This decouples \textbf{rate-limit handling} from business logic at both ends of the call.
+
+\end{enumerate}
+
+
+\textbf{Return Value}
+\begin{verbatim}
+    @dataclass
+    class WorkflowResult:
+        content:          str
+        intent:           Intent
+        secondary_intent: Optional[Intent]
+        cache:            dict   # full merged working_cache for this turn
+\end{verbatim}
+
+The Streamlit session layer stores \texttt{WorkflowResult.cache} in \texttt{st.session\_state} and passes it \textbf{back as the cache argument} on the next call to \texttt{route\_and\_execute}. The cache is the mechanism that makes \textbf{multi-turn conversations about the same portfolio} efficient without any explicit session management logic inside the pipeline.\\
+
+\textbf{Key Design Decisions}
+\begin{itemize}
+    \item \textbf{Set-intersection for tool requirements}: clean, declarative, handles dual-intent messages without branching. Adding a new intent only requires updating the constant sets, not the execution logic.
+    \item \textbf{Shallow-copy cache with per-key staleness}: stale data is never served; valid data is always reused. The copy ensures the prior turn's cache is never mutated in-place, keeping session state predictable.
+    \item \texttt{portfolio\_changed} as a \textbf{first-class pipeline signal}: it simultaneously invalidates the cache, triggers a full recompute, and activates comparison mode in \texttt{generate\_explanation}. These behaviours are driven by a single boolean.
+    \item Strict \textbf{separation between orchestration and generation}: the orchestrator controls what data the LLM sees and applies scope rules, while the LLM synthesises and narrates. Neither component is exposed to the other's internal logic.
+
+\end{itemize}
+
+\paragraph{\texttt{generate\_explanation} (called inside \texttt{route\_and\_execute})}
+
+Taking a deeper look at the final step of \texttt{route\_and\_execute}, \texttt{generate\_explanation} converts the assembled \texttt{ExplanationContext} into the natural-language response using gemini-2.5-flash. This heavier model is justified because this step requires multi-document synthesis, financial domain reasoning, intent-specific tone and structure, all with strict numerical precision. Response quality is what the user directly experiences.\\
+
+\textbf{Pipeline}
+
+\begin{enumerate}
+    \item \textbf{Conditional prompt assembly} (\texttt{\_build\_explanation\_prompt}):
+    The context dict is serialised into a \textbf{multi-section markdown prompt}. Each section is \textbf{conditionally included} based on what data is present:
+
+    \begin{verbatim}
+        "## User's question"              always
+        "## Current portfolio"            always
+        "## Requested metrics"            only if requested_metrics is set
+        "## Risk contributions"           only if risk_contributions is set
+        "## Metric benchmarks"            only if metric_benchmarks is set
+        "## Risk classification"          only if risk_level is set
+        "## LSTM volatility forecast"     only if trend_forecast is set
+        "## Previous portfolio metrics"   only if portfolio_changed=True and
+        + "## Previous risk ..."          old portfolio data is non-empty
+        + "## MODE: COMPARISON"
+        "## Company context"              only if company_context (RAG) is set
+        "## Educational context"          only if educational_context (RAG)
+                                          is set
+        "## Concept to explain"           only if concept_name is set
+        "## Secondary request"            only if secondary_intent is set
+        "## Recent conversation"          only if chat_history is non-empty
+    \end{verbatim}
+
+    This means simpler intents like \texttt{GENERAL\_CHAT} response gets a minimal prompt (question + portfolio + history) while more complex intents, e.g. \texttt{FULL\_ANALYSIS} with comparison mode, LSTM, and RAG context gets a richly structured, densely populated prompt. The LLM would not be exposed to data that is irrelevant to the intent.
+
+    \item \texttt{AUTHORISED NUMBERS} block (\textbf{hallucination grounding}):
+    After all contextual sections, two blocks are appended last in the prompt:
+
+    \begin{verbatim}
+        ## AUTHORISED NUMBERS (single source of truth)
+        Every numerical value you cite MUST appear in this list.
+        Do not round, adjust, or invent any figure.
+        <metric_key> = <value_to_4dp>
+        ...
+
+        ## GROUNDING REQUIREMENT
+        Only cite numbers that appear verbatim in the AUTHORISED NUMBERS
+        section above. Do not use values from your training data, round
+        to "nicer" numbers, or fill gaps with plausible-sounding figures.
+    \end{verbatim}
+
+    The block is built by \textbf{iterating over all} metrics, risk contributions, the composite risk score, LSTM forecast values, and portfolio weights and stored in 4 d.p. I.e. All the \textbf{numerical figures the LLM might plausibly cite}. By placing these two blocks last in the prompt, this \textbf{maximises their recency} in the model's attention, making them the most proximate constraint at generation time.
+
+    \item LLM call:
+    \begin{verbatim}
+        model:              gemini-2.5-flash
+        temperature:        0.0    — deterministic; 
+                                        no creative drift on numbers
+        max_output_tokens:  8192   — generous ceiling 
+                                        for full-analysis responses
+        ThinkingConfig(thinking_budget=1024)
+    \end{verbatim}
+
+    A \texttt{thinking\_budget} of \texttt{1024} tokens allows for a \textbf{private chain-of-thought} pass before the visible response is generated. This is most valuable for:
+    \begin{itemize}
+        \item \textbf{comparison mode}, where the model must compute before/after deltas across two full metric sets, and
+        \item \textbf{dual-intent} messages, where it must structure two coherent answers from a shared data pool without repeating information.
+    \end{itemize}
+
+    This private reasoning does not appear in the user-facing output, so it improves coherence without increasing visible response length.
+
+    \item LLM call:
+    Post-generation \textbf{hallucination audit} (\texttt{\_check\_numbers}):
+    After the response is received, a regex \textbf{extracts all decimal numbers} and checks each \textbf{against a pre-built authorised set}. To avoid false positives, each authorised value is stored in six representations:
+    \begin{verbatim}
+        f"{v:.4f}"        0.2234  — canonical
+        f"{v:.2f}"        0.22
+        f"{v:.1f}"        0.2
+        f"{v*100:.2f}"    22.34   — percentage form
+        f"{v*100:.1f}"    22.3
+        f"{v*100:.0f}"    22
+    \end{verbatim}
+
+    Suspect numbers are \textbf{logged as warnings}; the response is returned regardless. This is intentionally a development \textbf{debugging aid}, not a production gate. Numbers like "over the last 5 years" or "a beta of 1.2 means..." appear in narrative context and are not fabrications. The primary grounding mechanism is the prompt-level \texttt{AUTHORISED NUMBERS} block; \textbf{\_check\_numbers} surfaces potential issues during development without blocking users on false positives.\\
+
+\end{enumerate}
+
+\textbf{Intent-specific Output Contracts (\texttt{explain\_system\_prompt})}
+
+The system prompt defines a \textbf{distinct output structure per intent}. This prevents the LLM from defaulting to a generic "here is everything" format regardless of what was asked:
+
+\begin{tabular}{|l|p{10cm}|}
+\hline
+Intent & Output Structure \\
+\hline
+
+\texttt{FULL\_ANALYSIS} &
+Standalone:\newline
+1. Overall risk level and what it means for this portfolio\newline
+2. Key risk drivers (which assets contribute most to volatility)\newline
+3. Notable metrics. Flag anything concerning or exceptional\newline
+4. Trend outlook from LSTM forecast if present\newline
+5. Considerations framed as observations, not financial advice\newline
+
+Comparison (\texttt{portfolio\_changed=True}):\newline
+1. What improved and by how much (explicit before/after figures)\newline
+2. What worsened and by how much\newline
+3. How the risk classification shifted\newline
+4. Which assets are now the biggest risk drivers\newline
+5. Overall assessment of whether the change was beneficial\\
+\hline
+
+\texttt{SPECIFIC\_METRIC} &
+1. Current value and what it means \newline
+2. Benchmark label and comment from \texttt{metric\_benchmarks} \newline
+3. Brief relevance to this specific portfolio\\
+\hline
+
+\texttt{CONCEPT\_EXPLANATION} &
+1. Plain-language definition\newline
+2. Why it matters for portfolio risk\newline
+3. Simplified explanation of how it is calculated\newline
+4. Illustration with the user's actual portfolio numbers if available\\
+\hline
+
+\texttt{TREND\_PREDICTION} &
+1. What the forecast predicts (direction + predicted volatility level) \newline
+2. Comparison of predicted volatility to current volatility\newline
+3. What could invalidate the prediction\newline
+4. Explicit disclaimers that predictions are estimates, not guarantees\newline
+The prompt also explicitly forbids conflating \texttt{predicted\_direction} (predicted direction of returns) with volatility direction. \newline
+E.g. "Up" means \underline{returns} are predicted to be positive. It does not mean volatility is rising.\\
+\hline
+
+\texttt{FOLLOW\_UP} &
+Concise, addresses exactly what was asked.\newline
+References the prior response, but not re-summarise the full prior analysis.\\
+\hline
+
+\texttt{GENERAL\_CHAT} &
+Friendly response + capabilities summary.\newline
+Off-topic questions are politely redirected to portfolio analysis.\\
+\hline
+
+Dual intent &
+- Lead with the primary intent's answer.\newline
+- Section break (---).\newline
+- Secondary answer without repeating data in primary.\\
+\hline
+
+\end{tabular}\\\\
+
+\textbf{Key Design Decisions}
+\begin{itemize}
+    \item \textbf{Separate model from the classifier}: response quality is a user-facing output, heavier model is used here.
+    \item \textbf{\texttt{AUTHORISED NUMBERS} + \texttt{GROUNDING REQUIREMENT} placed last}: recency in the context window maximises their influence as a constraint at generation time.
+    \item \textbf{Multi-representation authorised set}: handles percentage vs. decimal presentation without flagging legitimate formatting choices as hallucinations.
+    \item \textbf{ThinkingConfig(budget=1024)}: private reasoning improves structural coherence on complex tasks (comparison mode, dual-intent synthesis) without increasing the length of the response the user reads.
+    \item \textbf{Conditional prompt sections}: the prompt is always as short as the task requires and no shorter. Simple intents do not pay the token cost of complex ones.
+\end{itemize}
+
+
+
+
 \subsubsection{Quant Tools}
+% to add
+
 \subsubsection{LSTM Tools}
+% to add
+
 \subsubsection{RAG Tools}
+% to add
 
 
 \subsection{Failure modes and safeguards}
 \todo{Missing tickers, short history, SPY fetch failure, model/RAG errors, graceful fallbacks.}
+
