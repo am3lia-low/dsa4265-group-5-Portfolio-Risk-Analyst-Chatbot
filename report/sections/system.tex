@@ -4,11 +4,47 @@
 \subsection{Architecture overview}
 \todo{Diagram or prose: UI $\rightarrow$ validation $\rightarrow$ data layer $\rightarrow$ quant $\rightarrow$ RAG $\rightarrow$ LLM response.}
 
+
 \subsection{User interface}
-\todo{Streamlit sidebar portfolio form, chat, session state.}
+
+The user interface for this application was developed using Streamlit, a Python-based framework that enables rapid development of interactive web applications. The interface is designed to provide a simple and structured workflow, guiding users from portfolio input to interactive analysis through a chatbot. Emphasis was placed on clarity, responsiveness, and ensuring that users provide valid inputs before accessing analytical features.
+
+\begin{figure}[H]
+    \centering
+    \fbox{\includegraphics[width=0.75\textwidth]{ui_start_screen.png}}
+    \caption{Initial interface of the portfolio analysis chatbot.}
+    \label{fig:ui_start}
+\end{figure}
+
+As shown in Figure~\ref{fig:ui_start} the sidebar, located on the left, serves as the primary input interface for portfolio construction. Users are required to input portfolio components, including asset tickers, corresponding weights, and the total investment amount. Input validation mechanisms are implemented to ensure data integrity, such as verifying that portfolio weights sum to 100\% and that the entered tickers are valid. Where invalid inputs are detected, appropriate error messages are displayed, while successful validation triggers a confirmation message indicating that the portfolio is ready for analysis. In addition, tickers entered without capitalisation are automatically standardised to uppercase before being stored in the session state. The number of input fields shown in the sidebar is also managed dynamically based on the number of stocks selected by the user. This structured input process ensures that all subsequent computations are based on valid and consistent data.
+
+The main interface consists of a chat-based interaction system that enables users to query and analyse their portfolio. Messages are displayed in a conversational format, with clear visual distinction between user inputs and system-generated responses, as shown in Figure~\ref{fig:ui_query}. below. To improve user experience, a loading indicator is shown while backend processing is underway, providing feedback that the query is being handled.
+
+\begin{figure}[H]
+    \centering
+    \fbox{\includegraphics[width=0.75\textwidth]{ui_query_and_response.png}}
+    \caption{Chat-based query and response interface of the portfolio analysis chatbot.}
+    \label{fig:ui_query}
+\end{figure}
+
+A key design feature is the implementation of a chat-locking mechanism. The chat functionality remains disabled until a valid portfolio has been successfully submitted. This prevents invalid or premature queries and enforces a logical interaction flow. Once the portfolio is validated, the chat is unlocked and users are notified that they may begin interacting with the system.
+
+To support dynamic interaction, session state management is implemented using Streamlit's \texttt{st.session\_state} functionality. This enables the application to retain key information across reruns within the same user session, including the current portfolio data, submitted portfolio versions, validation status, chat history, and portfolio-related system messages. Variables such as \texttt{portfolio\_ready} are used to control whether the chatbot is accessible, while separate storage of \texttt{chat\_history} and \texttt{portfolio\_messages} helps maintain a clean and organised interface. Additional state variables, such as the number of stocks selected and whether the portfolio has been updated, allow the interface to respond dynamically to user actions. This ensures continuity of interaction and prevents the loss of important data during use.
+
+From a user experience perspective, the interface is designed to be intuitive and guided. Users receive immediate feedback on their inputs, are prevented from making invalid queries, and can clearly follow the progression from portfolio input to analysis. Visual cues, such as confirmation messages and loading indicators, further enhance usability and provide transparency during system processing. Overall, the design promotes a structured and user-friendly interaction, ensuring that users can efficiently navigate the application and obtain meaningful insights from their portfolio.
+
+
+
 
 \subsection{Key modules}
 \todo{\texttt{agent\_tools/data\_tools}, quant (if separate), \texttt{RAG/}, \texttt{workflow\_tools} (classifier, orchestrator).}
+
+\subsubsection{Data Tools}
+\subsubsection{Main Workflow Tools}
+\subsubsection{Quant Tools}
+\subsubsection{LSTM Tools}
+\subsubsection{RAG Tools}
+
 
 \subsection{Failure modes and safeguards}
 \todo{Missing tickers, short history, SPY fetch failure, model/RAG errors, graceful fallbacks.}
