@@ -77,4 +77,122 @@ Across all intents, increasing k consistently improves Recall, confirming that t
 
 
 \subsection{LLM Evaluation}
-% to add
+Finally, we evaluated the workflow functions to verify consistent LLM performance, as these models are prone to variable outputs.
+
+\subsubsection{\texttt{intent\_classifier}}
+\paragraph{Evaluation Methodology}
+
+The classifier was evaluated with a hand-crafted test suite of 57 test cases, divided into nine progressively harder sections:
+
+
+\begin{itemize}
+    \item Section 1 — Clear-cut intents: \newline
+    Unambiguous examples of all six intents. These establish the performance ceiling for straightforward inputs (e.g. ``Analyse my portfolio'' , ``What is beta?'' , ``Hi'' ).
+    
+    \item Section 2 — Disambiguation: \newline
+    Lexically similar phrasings that should map to different intents. A critical pair tested is:\newline
+    ``What is MY Sharpe ratio?'' → \texttt{specific\_metric}  (possessive + metric)\newline
+    ``What IS the Sharpe ratio?'' → \texttt{concept\_explanation}  (definitional)
+
+    \item Section 3 — Multi-intent messages: \newline
+    Messages that contain two distinct requests simultaneously, requiring the classifier to set both a primary and a secondary intent correctly.\newline
+    e.g. ``Analyse my portfolio and explain what VaR means'' \newline
+    → \texttt{primary=full\_analysis, secondary=concept\_explanation}
+
+    \item Section 4 — Disguised intents: \newline
+    Messages where a greeting or filler phrase wraps an actionable request.\newline
+    e.g. ``Hey! Analyse my portfolio please''  → \texttt{full\_analysis}, not \texttt{general\_chat}
+
+    \item Section 5 — Ambiguous/stress tests: \newline
+    Vague, minimal, or single-word messages (e.g. ``Risk''  ``Is this good'', ``How's my risk?'' ). These test whether the classifier can infer intent from context and prior conversation history.
+
+    \item Section 6 — Entity extraction: \newline
+    Tests validating metric and concept name extraction, not just intent classification.\newline
+    e.g. ``How's my downside looking?'' \newline
+    → \texttt{specific\_metric} AND extract\texttt{[var\_95, cvar\_95, sortino\_ratio]}
+
+    \item Section 7 — Hard multi-intent edge cases: \newline
+    Cases where two apparent intents resolve to the same intent e.g. ``Sell Tesla and analyse what's left'' → \texttt{full\_analysis} only, or where a secondary intent involves a cross-intent pairing.
+
+    \item Section 8 — Adversarial/tricky phrasing: \newline
+    Includes: negation (``Don't analyse my portfolio, just tell me what beta means''), informal language with typos (``whats my sharp ratio lol''), extremely long messages with the intent buried at the end, and hypothetical framings that resemble portfolio questions but are conceptual in nature.
+
+    \item Section 9 — Boundary: \texttt{full\_analysis} vs \texttt{specific\_metric}: \newline
+    Systematically tests the hardest boundary in the taxonomy. Questions like ``How risky is my portfolio?'' (\texttt{full\_analysis}) vs ``Show me my volatility'' (\texttt{specific\_metric}) differ subtly in scope. This section targets exactly those distinctions.
+
+\end{itemize}
+
+Each test case checked:
+\begin{enumerate}[i]
+    \item correct primary intent,
+    \item correct secondary intent where expected, and
+    \item correct entity extraction where specified.
+\end{enumerate}
+
+\paragraph{Results}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=1.05\textwidth]{eval_intent_classifier.png}
+    \caption{Plotted results of \texttt{intent\_classifier} tests.}
+    \label{fig:eval_intent_classifier}
+\end{figure}
+
+Overall, the classifier achieved approximately 85-88\% accuracy (around 49-50 of the 57 test cases passed). By intent category, \texttt{full\_analysis} achieved the highest absolute count with 21 correctly classified instances, making it the largest intent class, followed by \texttt{specific\_metric} with 16 and \texttt{concept\_explanation} with 10. The remaining categories recorded smaller counts. The confidence scatter plot showed a useful separation: correctly classified tests typically had model confidence of 0.8 to 1.0
+
+It should also be noted that most failures clustered at 0, suggesting that misclassification might also be due to API failures (likely \texttt{503} error). Because when such errors strike, \texttt{intent\_classifier} is designed to default the query to \texttt{general\_chat}. The three test cases misclassified as \texttt{general\_chat} in the rightmost plot, and their near-consecutive occurrences, support this inference.
+
+\subsubsection{\texttt{generate\_explanation}}
+
+\paragraph{Evaluation Methodology}
+The explainer was evaluated using an LLM-as-judge framework across a single, balanced portfolio configuration (AAPL, MSFT, SPY, TLT, GLD, VNQ), covering all six intent types. The evaluation had two layers:
+
+\begin{itemize}
+    \item Layer 1 — Full pipeline execution: \newline
+    For each intent type, a realistic test query was sent through the complete pipeline: \texttt{classify\_intent} → \texttt{route\_and\_execute} → \texttt{generate\_explanation} \newline
+    This tests the end-to-end behaviour, ensuring the explainer works compatibly in the full pipeline. The \texttt{follow\_up} test case was chained off the actual \texttt{full\_analysis} response to simulate a real conversational sequence.
+
+    \item Layer 2 — LLM-as-judge scoring: \newline
+    Two independent models from different providers, Claude Sonnet (claude-sonnet-4-6) and Groq Llama (llama-3.3-70b-versatile), were chosen to guard against self-grading bias. \newline
+
+    They scored the responses on four dimensions, on a 0-5 scale:
+    \begin{enumerate}
+        \item \textbf{Factual accuracy}: Do the numbers and labels in the response match the provided data exactly?
+        \item \textbf{Intent alignment}: Does the response directly and fully answer the user’s query?
+        \item \textbf{Completeness}: Does the response cover all required aspects for this intent type?
+        \item \textbf{Clarity}: Is the response well-structured, written in plain, comprehensible language?
+
+    \end{enumerate}
+
+\end{itemize}
+
+\paragraph{Results}
+
+Results are visualised as dual heatmaps: rows represent intent types, columns represent the four evaluation dimensions, with one heatmap for each judge.
+
+Initial evaluation runs (Figure~\ref{fig:eval_heatmap_before}) revealed two factual accuracy failures, where \newline
+ \texttt{trend\_prediction} and \texttt{full\_analysis} scored very poorly on factual accuracy. Possible reasons were hallucinated metrics (since the two intents cited plenty of metrics), and the systematic confusion between two distinct LSTM output fields. The model incorrectly described the "up" direction, which predicts the direction of returns, as "rising volatility".
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{eval_heatmap_before.png}
+    \caption{Initial judge scorings for the various responses.}
+    \label{fig:eval_heatmap_before}
+\end{figure}
+
+To address these failures, targeted measures were added to the system prompt:
+
+\begin{itemize}
+    \item A more explicit field definition clarifying that \texttt{predicted\_direction} refers to \texttt{PORTFOLIO RETURNS} direction, not volatility
+    \item An inline \texttt{AUTHORISED NUMBERS} annotation block was added to the \texttt{generate\_explanation} prompt, forcing the model to re-read what each forecast field means before generating
+    \item Changing \texttt{temperature} for Gemini 2.5 Flash from \texttt{0.7} to \texttt{0.0}
+\end{itemize}
+
+After these changes, scores improved substantially in the final run.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{eval_heatmap_final.png}
+    \caption{Final judge scorings for the various responses.}
+    \label{fig:eval_heatmap_final}
+\end{figure}
