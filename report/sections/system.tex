@@ -487,7 +487,36 @@ Dual intent &
 
 
 \subsubsection{Quant Tools}
-% to add
+The quant module acts as the computation layer of the pipeline. Its role is to receive the pre-fetched return data from the data layer and use it to produce a set of risk metrics that is fed into the risk classifier and the LLM explanation layer. This module does not fetch or clean data, and remains purely stateless and deterministic.
+
+\paragraph{Inputs}
+
+The orchestrator calls the module’s primary wrapper as such:
+
+\texttt{all\_metrics = calculate\_all\_metrics(returns=returns,} \newline
+\null \qquad \qquad \qquad \qquad \qquad \qquad \qquad \qquad \qquad \qquad \qquad \texttt{weights=portfolio["weights"])}
+
+The returns DataFrame is produced by the data layer's \texttt{fetch\_price\_data} function, containing daily simple returns for all portfolio assets with SPY appended as the market benchmark for beta calculation. The weights list corresponds to the user's assets only, excluding SPY.
+
+\paragraph{Covariance Matrix}
+The covariance matrix is annualised from daily simple returns and computed once at the start of the computation pipeline. It is then passed into the 3 functions; portfolio volatility, average pairwise correlation and risk contribution, ensuring that all 3 functions use a consistent representation of asset co-movement and reducing the need for redundant computation.
+
+\paragraph{Risk Metrics}
+12 metrics are computed in this quant module and they are grouped into 6 clusters, with each cluster representing a distinct dimension of portfolio risk. These 6 clusters are volatility, loss threshold, drawdown, risk-adjusted return, return shape and portfolio structure.
+
+The volatility cluster measures both total price movement through \texttt{portfolio\_volatility} and the stability of that movement over time through \texttt{vol\_of\_vol}. The loss threshold cluster captures tail risk through historical Value at Risk, known as VaR using \texttt{var\_95} and also its extension, Conditional Value at Risk, known as CVaR using\texttt{cvar\_95}, which measures the average loss beyond the VaR threshold. The drawdown cluster calculates the sustained losses through the function \texttt{max\_drawdown}, which is computed from a compounded wealth series to ensure that all assets contribute proportionally regardless of nominal price levels. The risk-adjusted return cluster evaluates the return quality through Sharpe and Sortino ratio, with Sortino ratio penalising only the downside volatility. The return shape clusters capture distribution through skewness and \texttt{excess\_kurtosis}, which is able to detect asymmetry and fat tails that volatility alone cannot capture. Lastly, the portfolio structure cluster measures market sensitivity beta, weight concentration with \texttt{hhi\_concentration}, average asset co-movement \texttt{avg\_pairwise\_correlation} and per-asset decomposition of total portfolio volatility \texttt{risk\_contribution}.
+
+\paragraph{Benchmark Labelling}
+To ensure that our metrics is suited to be used in the LLM prompt, each scalar metric is mapped by \texttt{metric\_benchmarks} to a label and a plain-English comment which is derived from a heuristic threshold based on standard finance convention. For example, a Sharpe ratio less than 0.8 is labelled “poor” with the comment “below 0.8 - poor risk-adjusted return”. These labels are added to each metric when building the LLM prompt. Adding interpretable context so that the LLM does not infer what the value means. This can help directly reduce hallucination risk, especially for metrics where the thresholds are not obvious like excess kurtosis.
+
+\paragraph{Outputs}
+The module produces 2 distinct outputs, 6 metrics for the risk classifier and all 12 metrics for the LLM explanation layer. For the risk classifier, \texttt{portfolio\_volatility}, \texttt{max\_drawdown}, \texttt{var\_95}, \texttt{hhi\_concentration}, \texttt{avg\_pairwise\_correlation}, and \texttt{sharpe\_ratio} are normalised and combined into a weighted composite score mapped to a low, medium and high label. For the LLM explanation layer, all 12 metrics together with their benchmark labels are used. The \texttt{risk\_contribution} dictionary is included in the LLM context as a per-asset breakdown and excluded from the classifier, as its variable length across portfolios is incompatible with the fixed normalisation ranges in the risk score formula.
+
+\paragraph{Caching}
+The orchestrator sets the data window at five years trailing from the current date. After the first computation, the metric dictionary and benchmark analysis are cached for the session and reused on subsequent queries where the portfolio is unchanged, avoiding redundant price fetching and recomputation on any follow-up queries.
+
+
+
 
 \subsubsection{LSTM Tools}
 While the current portfolio risk assessment tool gives some insight on current risks of a portfolio using traditional backward-looking metrics, it is unable to do a forward-looking risk assessment of the portfolio. Thus, we complemented this tool with a Future Portfolio Risk Tool. This is an agentic tool created to predict the future volatility of and directional movement of the portfolio Up or Down over the next 10 days using a Long Short-Term Memory (LSTM) trained on log returns from the past 60 days. Given the inherent volatility of financial markets, the 10-day horizon was selected as it is a balance between leveraging historical data and managing uncertainty associated with longer-term forecasts, to allow for more insightful decision-making. LSTM is able to capture temporal dependencies and handle non-linear relationships, making it a good choice for modeling the financial time series dataset.
