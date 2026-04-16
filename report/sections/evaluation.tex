@@ -3,6 +3,78 @@
 
 \subsection{LSTM Evaluation}
 
+\begin{table}[h]
+    \centering
+    \begin{tabular}{|l|c|}
+        \hline
+        Volatility Prediction Evaluation MSE & 0.0026 \\
+        \hline
+        Volatility Prediction Evaluation MAE &  0.0389 \\
+        \hline
+        Direction Prediction Evaluation AUC & 0.5358 \\
+        \hline
+        Direction Prediction Evaluation Accuracy & 0.67 \\
+        \hline
+    \end{tabular}
+
+    \caption{Prediction results of volatility and future direction of portfolio on test dataset}
+    \label{tab:lstm_prediction_results}
+\end{table}
+
+As seen from Table~\ref{tab:lstm_prediction_results}, the model has relatively strong accuracy in predicting future volatility of portfolio over the next 10 days, with a test MSE of 0.0026 and MAE of 0.0389. These results suggest that the model is able to effectively learn and estimate short-term portfolio risk. This result is consistent with expectations, as volatility exhibits temporal clustering, making it more predictable from historical data. Comparatively, the model struggled in predicting future direction. The low AUC of only about 0.5358 suggests that the model’s ability to distinguish between future upward and downward movements of the portfolio is only marginally better than random guessing. 
+
+\begin{table}[h]
+    \centering
+    \begin{tabular}{|l|c|c|}
+        \hline
+          & Future Upward direction & Future Downward direction \\
+        \hline
+        Precision & 0.81 & 0.64 \\
+        \hline
+        Recall & 0.34 & 0.94 \\
+        \hline
+        F1-score & 0.48 & 0.76 \\
+        \hline
+    \end{tabular}
+
+    \caption{Classification report of future direction of portfolio on test dataset}
+    \label{tab:lstm_classification_report}
+\end{table}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.65\textwidth]{LSTM_confusion_matrix.png}
+    \caption{Confusion matrix on future direction of portfolio on test dataset.}
+    \label{fig:lstm_confusion_matrix}
+\end{figure}
+
+As observed from the confusion matrix in Figure~\ref{fig:lstm_confusion_matrix}, the model performs better in predicting future portfolio downward movements. From Table~\ref{tab:lstm_classification_report}, the model is observed to have very high recall for downward movements, showing that it is able to identify most future downward portfolio directions. However, it has low recall for future upward movements and many future upward trends are misclassified as downward. The model struggles to learn a robust directional signal and the input feature of 60 days log-return does not contain sufficient predictive information for future direction. 
+
+The discrepancy between volatility and direction prediction performance highlights the challenges in financial time series modeling. Volatility is generally easier to predict due to its relatively stable statistical properties like clustering, which allows the model to effectively learn temporal dependencies. Comparatively, future portfolio direction is inherently noisy and less predictable, especially when using relatively short input windows such as 60 days of log returns.
+
+The model is also observed to be more conservative when predicting upward movements as seen from the significantly lower recall for upwards prediction. There are fewer false positives as seen from the higher precision for upwards prediction and the model is more sensitive in predicting downward movements with fewer missed negatives from the higher recall, which is relatively more desirable than the converse in a risk management context.
+
+Therefore, while the LSTM is effective for volatility forecasting, it is less suitable for directional prediction as it struggles to extract meaningful signals for direction due to the high level of noise and weak predictability in short-term portfolio direction. 
+
 \subsection{RAG Retrieval Evaluation}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{rag_eval.png}
+    \caption{Recall and MRR at $k \in \{5, 8, 10\}$ across three intent routes.}
+    \label{fig:rag_recall_mrr}
+\end{figure}
+
+To evaluate retrieval quality, nine queries were designed spanning all four intent routes -  \texttt{full\_analysis}, \texttt{concept\_explanation}, \texttt{trend\_prediction} and \texttt{no\_intent}, at three difficulty levels: Easy, Medium and Hard. Retrieval performance was assessed using Recall@$k$ and Mean Reciprocal Rank (MRR) at $k \in \{5, 8, 10\}$. While MRR measures the rank position of the first relevant result, Recall@$k$ measures how many relevant chunks are surfaced within the top k; the two metrics are therefore complementary, a system can rank its first retrieved chunk perfectly (MRR = 1.0) while still missing out other relevant material (Recall $<$ 1.0).
+
+As shown in Figure~\ref{fig:rag_recall_mrr}, MRR equals 1.0 across every intent at every value of k, indicating that whenever a relevant chunk is retrieved, it is consistently ranked first. This confirms that the hybrid retrieval strategy produces well-ordered results.
+
+For \texttt{full\_analysis} queries, Recall@$k$ rises from 0.385 at k=5 to 0.769 at k = 10, reflecting consistent retrieval from a well-populated knowledge store. \texttt{Trend\_prediction} achieves the strongest recall trajectory, reaching near-perfect scores at k=10, suggesting that dense semantic search handles indirectly phrased forward-looking queries effectively.
+
+\texttt{Concept\_explanation} records the lowest Recall@$k$ values; however, this is an artefact of knowledge base construction rather than retrieval failure. Only one relevant chunk exists per concept in the concept store, placing a hard ceiling on the system and motivating future work to expand the concept corpus.
+
+Across all intents, increasing k consistently improves Recall, confirming that the relevant chunks exist in the index and that broader retrieval windows surface them reliably. Overall, the results suggest that the pipeline is well-calibrated for ranking quality, with the primary path to improvement lying in expanding the concept knowledge store rather than in changes to the retrieval mechanism itself.
+
+
 
 \subsection{LLM Evaluation}
+% to add
