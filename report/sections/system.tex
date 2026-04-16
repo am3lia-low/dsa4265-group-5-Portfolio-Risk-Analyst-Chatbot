@@ -46,7 +46,7 @@ The user interface for this application was developed using Streamlit, a Python-
     \label{fig:ui_start}
 \end{figure}
 
-As shown in Figure~\ref{fig:ui_start} the sidebar, located on the left, serves as the primary input interface for portfolio construction. Users are required to input portfolio components, including asset tickers, corresponding weights, and the total investment amount. Input validation mechanisms are implemented to ensure data integrity, such as verifying that portfolio weights sum to 100\% and that the entered tickers are valid. Where invalid inputs are detected, appropriate error messages are displayed, while successful validation triggers a confirmation message indicating that the portfolio is ready for analysis. In addition, tickers entered without capitalisation are automatically standardised to uppercase before being stored in the session state. The number of input fields shown in the sidebar is also managed dynamically based on the number of stocks selected by the user. This structured input process ensures that all subsequent computations are based on valid and consistent data.
+As shown in Figure~\ref{fig:ui_start}, the sidebar, located on the left, serves as the primary input interface for portfolio construction. Users are required to input portfolio components, including asset tickers, corresponding weights, and the total investment amount. Input validation mechanisms are implemented to ensure data integrity, such as verifying that portfolio weights sum to 100\% and that the entered tickers are valid. Where invalid inputs are detected, appropriate error messages are displayed, while successful validation triggers a confirmation message indicating that the portfolio is ready for analysis. In addition, tickers entered without capitalisation are automatically standardised to uppercase before being stored in the session state. The number of input fields shown in the sidebar is also managed dynamically based on the number of stocks selected by the user. This structured input process ensures that all subsequent computations are based on valid and consistent data.
 
 The main interface consists of a chat-based interaction system that enables users to query and analyse their portfolio. Messages are displayed in a conversational format, with clear visual distinction between user inputs and system-generated responses, as shown in Figure~\ref{fig:ui_query}. below. To improve user experience, a loading indicator is shown while backend processing is underway, providing feedback that the query is being handled.
 
@@ -116,7 +116,7 @@ Its main role is to classify user messages into a primary intent, an optional se
     \end{itemize}
 
     \item \textbf{Schema-constrained LLM call:}\\
-    \texttt{response\_mime\_type="application/json"} combined with\\ \texttt{response\_json\_schema=IntentClassification.model\_json\_schema()} forces Gemini to emit valid, typed JSON structures, hence eliminating an entire class of parsing bugs rather than free-text JSON extraction with regex. The Pydantic schema is as such:\\
+    \texttt{response\_mime\_type="application/json"} combined with\\ \texttt{response\_json\_schema=IntentClassification.model\_json\_schema()} forces Gemini to \textbf{emit valid, typed JSON structures}, hence eliminating an entire class of parsing bugs rather than free-text JSON extraction with regex. The Pydantic schema is as such:\\
 
     \begin{verbatim}
         class IntentClassification(BaseModel):
@@ -206,9 +206,9 @@ These keys match exactly the keys produced by \texttt{calculate\_all\_metrics}, 
 \textbf{Key Design Decisions}
 \begin{itemize}
     \item \textbf{Flash-Lite} for classification: heavier compute is reserved for explanation generation, where reasoning depth directly affects response quality.
-    \item \textbf{Schema-constrained} output: one source of validation truth; no brittle regex. temperature = 0.0: deterministic classification matters when users are making financial decisions and expect consistent behaviour across repeated queries.
+    \item \textbf{Schema-constrained} output: one source of validation truth; no brittle regex. \texttt{temperature = 0.0}: deterministic classification matters when users are making financial decisions and expect consistent behaviour across repeated queries.
     \item \textbf{Fuzzy-match + \texttt{GENERAL\_CHAT}} fallback: the pipeline never crashes on the classifier output drift. It degrades to a safe, helpful response.
-    \item \textbf{Rate limit errors (\texttt{HTTP 429})} are re-raised unconditionally so the KeyRotator in the caller can retry on the next API key. All other exceptions are caught and return the safe fallback.
+    \item \textbf{Rate limit errors (\texttt{HTTP 429})} are re-raised unconditionally so the \texttt{KeyRotator} in the caller can retry on the next API key. All other exceptions are caught and return the safe fallback.
 \end{itemize}
 
 
@@ -236,10 +236,12 @@ This function acts as the orchestration backbone. It receives the \texttt{Intent
 
     \item \textbf{Cache staleness check} (per stage):
     \begin{verbatim}
-        metrics_stale = portfolio_changed OR (cache.get("metrics") is None)
-        risk_stale    = portfolio_changed OR (cache.get("risk_level") is None)
+        metrics_stale = portfolio_changed OR
+                                (cache.get("metrics") is None)
+        risk_stale    = portfolio_changed OR
+                                (cache.get("risk_level") is None)
         lstm_stale    = portfolio_changed OR
-                                         (cache.get("trend_forecast") is None)
+                                (cache.get("trend_forecast") is None)
     \end{verbatim}
 
     A shallow copy of the prior-turn cache is made at the start of the function. Keys whose data were not recomputed get carried forward, unchanged, into the new turn's cache. Only keys whose corresponding tool has been executed, gets overwritten. This means a user asking five follow-up questions about the \textbf{same portfolio} triggers only RAG + LLM on turns 2–5; the expensive compute stages (price fetch, metrics, classifier, LSTM) \textbf{run once, and their results persist}.
@@ -252,7 +254,7 @@ This function acts as the orchestration backbone. It receives the \texttt{Intent
 
 \begin{tabular}{|l|p{10cm}|}
 \hline
-Intents & Description \\
+Stages & Actions \\
 \hline
 
 1. Quantitative metrics &
@@ -284,12 +286,14 @@ Intents & Description \\
         \item \texttt{clean\_metrics} excludes the nested \texttt{risk\_contribution} dict; risk contributions are passed separately so the explanation layer can handle them distinctly.
         \item \texttt{requested\_metrics} (from \texttt{IntentResult.extracted\_metrics}) is passed through, so \texttt{generate\_explanation} knows to narrow its response to those metrics only.
         \item If \texttt{portfolio\_changed = True} and \texttt{old\_cache} is non-empty, the \textbf{previous turn's} metrics, risk contributions, and risk classification are included under \texttt{previous\_*} keys. This is what enables \textbf{before/after comparison mode}, where the LLM sees both portfolios' full data and is instructed to produce a delta, comparative analysis rather than a standalone assessment.
-        \item For dual-intent messages, \texttt{secondary\_intent}, \texttt{secondary\_concept}, and \texttt{secondary\_requested\_metrics} are all populated, giving \texttt{generate\_explanation} the full context to address both requests in one coherent response.
+        \item For dual-intent messages, \texttt{secondary\_intent}, \texttt{secondary\_concept}, and
+        \newline \texttt{secondary\_requested\_metrics} are all populated, giving \texttt{generate\_explanation} the full context to address both requests in one coherent response.
         \item \texttt{chat\_history} is capped at the \textbf{last 6 messages}, each truncated to 300 characters, to keep the explanation prompt from growing unbounded.
     \end{itemize}
 
     \item API call with \textbf{key rotation}:
-    The assembled context dict is passed to \texttt{generate\_explanation} via:
+    The assembled context dict is passed to\newline
+    \texttt{generate\_explanation} via:
     \begin{verbatim}
         _key_rotator.call_with_retry(
             lambda client: generate_explanation(ctx, client=client)
@@ -486,12 +490,56 @@ Dual intent &
 % to add
 
 \subsubsection{LSTM Tools}
-% to add
+While the current portfolio risk assessment tool gives some insight on current risks of a portfolio using traditional backward-looking metrics, it is unable to do a forward-looking risk assessment of the portfolio. Thus, we complemented this tool with a Future Portfolio Risk Tool. This is an agentic tool created to predict the future volatility of and directional movement of the portfolio Up or Down over the next 10 days using a Long Short-Term Memory (LSTM) trained on log returns from the past 60 days. Given the inherent volatility of financial markets, the 10-day horizon was selected as it is a balance between leveraging historical data and managing uncertainty associated with longer-term forecasts, to allow for more insightful decision-making. LSTM is able to capture temporal dependencies and handle non-linear relationships, making it a good choice for modeling the financial time series dataset.
+
+A synthetic portfolio dataset is created to generate log return sequences for training the LSTM model. The dataset consists of a diversified set of asset classes, including equities like AAPL, MSFT, SPY, QQQ, fixed income like TLT, IEF, commodities like GLD, DBC, energy like USO and real estate like VNQ. This is to allow the model to learn signals across a diverse set of portfolios ranging from relatively conservative to relatively aggressive.
+
+The synthetic portfolios are generated by selecting a subset of assets with more significant weights, then assigning small weights to the remaining assets. Dirichlet distribution is used for realistic allocation patterns to mimic real portfolios, which are typically sparse and concentrated instead of being uniformly distributed. After generating the synthetic portfolios, their corresponding 60-day log return sequences are extracted from \texttt{yfinance} and used as input samples for training the LSTM model. The ground-truth targets are the future volatility and direction over the next 10 days. Log returns are used to improve training stability as they are additive over time and may help reduce skewness in the dataset.
+
+To ensure the quality of the input dataset, non-overlapping windows are used to minimize data leakage. Threshold-based filtering is also applied to remove ambiguous samples for determining future direction to allow the model to learn from clearer signals. Due to class imbalance in the dataset where there are more samples with an upward future direction, weighted binary cross entropy loss is used to give more importance to the minority downward class. This prevents the LSTM model from becoming biased toward the majority upwards class.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.75\textwidth]{LSTM_class_imbalance.png}
+    \caption{Bar plot showing class imbalance in synthetic dataset.}
+    \label{fig:lstm_class_imbalance}
+\end{figure}
+
+A two-layer LSTM architecture is used to capture temporal dependencies, with a dropout rate of 0.1 applied to the first layer and 0.2 to the second layer for regularization. The model adopts a multi-task learning framework with two output heads, a volatility head for regression that is trained using mean squared error (MSE) loss and a direction head for classification that is trained using binary cross-entropy with logits. Adam optimizer with learning rate of 3e-4 for stable convergence and a weight decay of 1e-4 to prevent overfitting and improve generalization.
+
+After training the LSTM, the model weights of the trained LSTM were then saved to perform inference on the user's portfolio when they use our portfolio risk analysis chatbot. An inference pipeline is created as an agentic tool to preprocess the portfolio and convert it to the log-return series input to be fed into the trained model. The model will then output predicted volatility and direction of the portfolio in 10 days, the probability of upward direction of the portfolio and the confidence of the model in the direction prediction.  
+
+However, there are still limitations to this LSTM prediction tool as the synthetic data generated may not capture all real market dynamics and external macro factors that may be instrumental in affecting future portfolio performances are not included. Thus, we also included a RAG model in our agentic AI chatbot to obtain relevant information from news, company filings and reports to supplement this tool for a more well-rounded evaluation of portfolio performance.
+
 
 \subsubsection{RAG Tools}
-% to add
+\begin{figure}[H]
+    \centering
+    \fbox{\includegraphics[width=0.75\textwidth]{rag_pipeline.png}}
+    \caption{Overview of the RAG Retrieval pipeline.}
+    \label{fig:rag_pipeline}
+\end{figure}
 
+Retrieval-Augmented Generation (RAG) is a hybrid architecture that augments a large language model (LLM) with a dynamic, external knowledge base, allowing the system to ground its responses in retrieved evidence rather than relying solely on parametric knowledge encoded in the model weights. Unlike purely generative approaches, RAG decouples the knowledge store from the model itself, enabling domain-specific information to be updated independently without retraining. In this system, the RAG serves as the core information retrieval layer within a broader agentic workflow.
 
-\subsection{Failure modes and safeguards}
-\todo{Missing tickers, short history, SPY fetch failure, model/RAG errors, graceful fallbacks.}
+From Figure~\ref{fig:rag_pipeline}, before retrieval is performed, the pipeline first identifies the user’s query intent, which is explicitly specified in parentheses as one of three categories: \texttt{full\_analysis}, \texttt{concept\_explanation} or \texttt{trend\_prediction}. These intent labels are chosen as they are most suitable for a Retrieval-Augmented Generation (RAG) framework. This routing mechanism follows the principle of query-adaptive retrieval, where constraining the retrieval process to intent-relevant sources improves precision and reduces noise.
+
+Depending on the classified intent, different data sources are activated. For \texttt{full\_analysis} queries, the system performs ticker resolution in addition to retrieving information from Strategy data stores. \texttt{Concept\_explanation} queries are handled exclusively by the Concept and Strategy store, ensuring focused and relevant explanatory content. Meanwhile, \texttt{trend\_prediction} queries draw from Macro and Ticker stores to provide forward-looking insights. If no intent is given, all data sources will be activated.
+
+The ticker resolution is implemented using \texttt{yfinance}, which provides up-to-date information on relevant financial instruments. The macro store retrieves market-level and economic data from Federal Reserve Economic Data (FRED) via an API key, with finance serving as a fallback source when necessary.
+
+Each chunk is encoded into a dense vector representation using a SentenceTransformer model, which produces semantically meaningful embeddings by fine-tuning transformer-based architectures on sentence-level similarity tasks. These embeddings are indeed into a persistent vector database (ChromaDB), enabling efficient approximate nearest-neighbour search. This transforms the knowledge base into a searchable latent space where semantically related content clusters together regardless of surface-level keyword overlap.
+
+Rather than relying on semantic search alone, the pipeline employs a hybrid retrieval strategy that combines dense keywords with semantic search, a design supported by findings that neither method dominates across all query types. The top-k candidate chunks are retrieved and assigned a fused relevance score via Reciprocal Rank Fusion. This hybrid approach improves robustness, particularly for queries involving specific financial tickers or technical terminology where exact lexical matches carry a strong signal.
+
+Retrieved chunks are passed through a post-processing stage that applies a minimum score threshold to discard low-relevance results. Ticker-aware filtering is additionally applied for \texttt{full\_analysis} queries to ensure alignment with specific securities mentioned in the query. This filtering stage mirrors best practices in RAG systems, where retrieved context quality has a direct downstream effect on generation faithfulness.
+
+To monitor retrieval quality at runtime, the pipeline computes standard information retrieval metrics, including Recall@k and Mean Reciprocal Rank (MRR). Diagnostic flags are surfaced when retrieval quality falls below acceptable thresholds, providing transparency into pipeline behaviour during inference. 
+
+Once the retrieval pipeline has produced a filtered, ranked set of chunks, these are passed to the LLM as augmented context for response generation, the final stage that closes the RAG loop. This process involves concatenating the retrieved chunks into a structured prompt alongside the original user query, effectively grounding the model’s generation in externally retrieved evidence.
+
+Within the agentic workflow, the LLM does not operate as a standalone generative model but rather as a reasoning engine that interprets and synthesises the retrieved context to produce a response. The retrieved chunks are formatted and inserted into the prompt template, where the model is conditioned to prioritise the provided context over its parametric knowledge. This technique has been shown to reduce hallucination in knowledge-intensive tasks significantly. Depending on the detected intent, the prompt structure is adapted accordingly.
+
+This tight coupling between the retrieval and generation stages is what distinguishes a RAG-based agent from a conventional LLM. Rather than generating from memory alone, the model is continuously supplied with fresh, query-relevant evidence at inference time, enabling it to handle rapidly evolving financial information without the need for retraining.
+
 
