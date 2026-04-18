@@ -82,48 +82,22 @@ Finally, we evaluated the workflow functions to verify consistent LLM performanc
 \subsubsection{\texttt{intent\_classifier}}
 \paragraph{Evaluation Methodology}
 
-The classifier was evaluated with a hand-crafted test suite of 57 test cases, divided into nine progressively harder sections:
-
+The classifier was evaluated using a hand-crafted suite of 57 test cases organised into nine categories of increasing difficulty. These categories were designed to test not only straightforward intent recognition, but also disambiguation, dual-intent handling, contextual inference, and entity extraction under noisy or ambiguous phrasing.
 
 \begin{itemize}
-    \item Section 1 — Clear-cut intents: \newline
-    Unambiguous examples of all six intents. These establish the performance ceiling for straightforward inputs (e.g. ``Analyse my portfolio'' , ``What is beta?'' , ``Hi'' ).
-    
-    \item Section 2 — Disambiguation: \newline
-    Lexically similar phrasings that should map to different intents. A critical pair tested is:\newline
-    ``What is MY Sharpe ratio?'' → \texttt{specific\_metric}  (possessive + metric)\newline
-    ``What IS the Sharpe ratio?'' → \texttt{concept\_explanation}  (definitional)
-
-    \item Section 3 — Multi-intent messages: \newline
-    Messages that contain two distinct requests simultaneously, requiring the classifier to set both a primary and a secondary intent correctly.\newline
-    e.g. ``Analyse my portfolio and explain what VaR means'' \newline
-    → \texttt{primary=full\_analysis, secondary=concept\_explanation}
-
-    \item Section 4 — Disguised intents: \newline
-    Messages where a greeting or filler phrase wraps an actionable request.\newline
-    e.g. ``Hey! Analyse my portfolio please''  → \texttt{full\_analysis}, not \texttt{general\_chat}
-
-    \item Section 5 — Ambiguous/stress tests: \newline
-    Vague, minimal, or single-word messages (e.g. ``Risk''  ``Is this good'', ``How's my risk?'' ). These test whether the classifier can infer intent from context and prior conversation history.
-
-    \item Section 6 — Entity extraction: \newline
-    Tests validating metric and concept name extraction, not just intent classification.\newline
-    e.g. ``How's my downside looking?'' \newline
-    → \texttt{specific\_metric} AND extract\texttt{[var\_95, cvar\_95, sortino\_ratio]}
-
-    \item Section 7 — Hard multi-intent edge cases: \newline
-    Cases where two apparent intents resolve to the same intent e.g. ``Sell Tesla and analyse what's left'' → \texttt{full\_analysis} only, or where a secondary intent involves a cross-intent pairing.
-
-    \item Section 8 — Adversarial/tricky phrasing: \newline
-    Includes: negation (``Don't analyse my portfolio, just tell me what beta means''), informal language with typos (``whats my sharp ratio lol''), extremely long messages with the intent buried at the end, and hypothetical framings that resemble portfolio questions but are conceptual in nature.
-
-    \item Section 9 — Boundary: \texttt{full\_analysis} vs \texttt{specific\_metric}: \newline
-    Systematically tests the hardest boundary in the taxonomy. Questions like ``How risky is my portfolio?'' (\texttt{full\_analysis}) vs ``Show me my volatility'' (\texttt{specific\_metric}) differ subtly in scope. This section targets exactly those distinctions.
-
+    \item \textbf{Section 1 - Clear-cut intents:} unambiguous examples of all six intents, used to establish baseline performance on straightforward inputs.
+    \item \textbf{Section 2 - Disambiguation:} lexically similar phrasings that should map to different intents, such as possessive metric queries versus definitional concept queries.
+    \item \textbf{Section 3 - Multi-intent messages:} messages containing two distinct requests, requiring both primary and secondary intents to be set correctly.
+    \item \textbf{Section 4 - Disguised intents:} cases where greetings or filler phrases wrap an actionable request and should not be misrouted as \texttt{general\_chat}.
+    \item \textbf{Section 5 - Ambiguous or stress cases:} vague, minimal, or highly underspecified messages that require the classifier to rely on scope and context.
+    \item \textbf{Section 6 - Entity extraction:} cases that test whether metric and concept names are extracted correctly in addition to the intent label.
+    \item \textbf{Section 7 - Hard multi-intent edge cases:} messages where two apparent requests collapse into one intent, or where secondary intents involve difficult cross-intent pairings.
+    \item \textbf{Section 8 - Adversarial or noisy phrasing:} inputs containing negation, informal spelling, long messages with buried requests, or hypothetical phrasing that resembles another intent class.
+    \item \textbf{Section 9 - Boundary between \texttt{full\_analysis} and \texttt{specific\_metric}:} cases targeting the hardest decision boundary in the taxonomy, where the distinction lies primarily in scope rather than wording.
 \end{itemize}
 
-Each test case checked:
-\begin{enumerate}[i]
+Each test case was checked for:
+\begin{enumerate}
     \item correct primary intent,
     \item correct secondary intent where expected, and
     \item correct entity extraction where specified.
@@ -170,8 +144,7 @@ The explainer was evaluated using an LLM-as-judge framework across a single, bal
 
 Results are visualised as dual heatmaps: rows represent intent types, columns represent the four evaluation dimensions, with one heatmap for each judge.
 
-Initial evaluation runs (Figure~\ref{fig:eval_heatmap_before}) revealed two factual accuracy failures, where \newline
- \texttt{trend\_prediction} and \texttt{full\_analysis} scored very poorly on factual accuracy. Possible reasons were hallucinated metrics (since the two intents cited plenty of metrics), and the systematic confusion between two distinct LSTM output fields. The model incorrectly described the "up" direction, which predicts the direction of returns, as "rising volatility".
+The initial evaluation (Figure~\ref{fig:eval_heatmap_before}) revealed concentrated factual-accuracy weaknesses in the \texttt{trend\_prediction} and \texttt{full\_analysis} responses. These failures were most plausibly driven by two issues: first, confusion between \texttt{predicted\_direction} (direction of portfolio returns) and \texttt{predicted\_volatility}; second, unsupported numerical claims in intents that referenced many metrics simultaneously.
 
 \begin{figure}[H]
     \centering
@@ -180,15 +153,15 @@ Initial evaluation runs (Figure~\ref{fig:eval_heatmap_before}) revealed two fact
     \label{fig:eval_heatmap_before}
 \end{figure}
 
-To address these failures, targeted measures were added to the system prompt:
+To address these weaknesses, three targeted prompt changes were introduced:
 
 \begin{itemize}
-    \item A more explicit field definition clarifying that \texttt{predicted\_direction} refers to \texttt{PORTFOLIO RETURNS} direction, not volatility
-    \item An inline \texttt{AUTHORISED NUMBERS} annotation block was added to the \texttt{generate\_explanation} prompt, forcing the model to re-read what each forecast field means before generating
-    \item Changing \texttt{temperature} for Gemini 2.5 Flash from \texttt{0.7} to \texttt{0.0}
+    \item an explicit definition stating that \texttt{predicted\_direction} refers to the direction of \texttt{portfolio returns}, not volatility;
+    \item an inline \texttt{AUTHORISED NUMBERS} block in the \texttt{generate\_explanation} prompt to constrain numerical references to provided values; and
+    \item reducing Gemini 2.5 Flash temperature from \texttt{0.7} to \texttt{0.0} to improve determinism.
 \end{itemize}
 
-After these changes, scores improved substantially in the final run.
+The final evaluation (Figure~\ref{fig:eval_heatmap_final}) shows clear improvement after these interventions, particularly in factual accuracy for the previously weak intents. This suggests that the main issue was not the overall workflow design, but insufficient prompt-level grounding and field disambiguation in numerically dense responses.
 
 \begin{figure}[H]
     \centering

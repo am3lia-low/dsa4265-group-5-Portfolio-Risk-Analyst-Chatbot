@@ -1,48 +1,64 @@
 \section{Discussion}
 \label{sec:discussion}
 
+This section reflects on the system from four complementary perspectives: implementation strengths, practical weaknesses, broader limitations, and responsible use. The discussion focuses on how these considerations arise from the actual design choices described in the preceding sections.
 
 \subsection{Strengths}
 
 \subsubsection{Data Preprocessing}
+The preprocessing pipeline is a strength because it enforces a consistent data contract before downstream analytics run. Adjusted closes reduce split and dividend artefacts, bounded forward fill plus row dropping preserve an aligned trading calendar, and automatic \texttt{SPY} insertion and ticker normalisation improve robustness for benchmark-dependent metrics.
 
-\subsubsection{Architecture \& Design}
+\subsubsection{Architecture}
+The key architectural strength is the explicit separation between intent resolution and deterministic execution. Intent is inferred by the classifier, but execution order is enforced in \texttt{route\_and\_execute()} through fixed intent-to-tool membership sets, rather than unconstrained LLM planning. This guarantees dependency order for metric computation (for example, covariance before derived portfolio statistics), improving reliability and debuggability. A session-level cache keyed by a portfolio hash avoids redundant recomputation when holdings are unchanged. The numeric hallucination guard further provides defence in depth: authorised numeric values are injected into the prompt and post-generation regex checks flag numbers not matching computed results. The design is also cost-aware: \texttt{gemini-2.5-flash-lite} is used for frequent structured classification, while a more capable model is reserved for explanation generation.
 
 \subsubsection{Quantitative Risk Module}
+The quantitative module computes 12 risk metrics spanning multiple dimensions of risk exposure (volatility, tail loss proxy, drawdown, risk-adjusted return, concentration, correlation, and related diagnostics). A covariance matrix is computed once and reused across dependent metrics, reducing duplication and ensuring consistency. Metrics are paired with benchmark labels so explanations remain interpretable instead of presenting isolated raw values.
 
-\subsubsection{LSTM Model}
+\subsubsection{LSTM Forecasting Module}
+The LSTM component shows strong test performance for volatility prediction (MSE \(\approx 0.0026\)). Its directional behaviour is asymmetric in a risk-appropriate way: higher precision on upward signals and higher recall on downward signals, which is desirable when missed downside warnings are costlier than false alarms. Weighted cross-entropy during training also reduces bias toward majority directional classes.
 
-\subsubsection{RAG Model}
+\subsubsection{RAG Retrieval Module}
+The RAG pipeline achieves strong retrieval ordering performance (MRR \(=1.0\) across evaluated intents), indicating that relevant chunks are consistently ranked at the top when available. Hybrid retrieval (dense + lexical with reciprocal rank fusion) and intent-conditioned routing improve precision by restricting search to relevant stores. For trend-style intents, high Recall@\(k\) at larger \(k\) suggests the semantic channel can still surface useful context for less direct forward-looking queries.
 
 \subsubsection{User Interface}
+The interface enforces a guided flow through ticker/weight validation, automatic ticker normalisation, and chat-locking before a valid portfolio is submitted. These checks reduce malformed requests reaching backend tools. Immediate feedback messages and loading cues increase transparency during processing and improve usability.
 
 
 
 \subsection{Weaknesses}
 
 \subsubsection{Data Preprocessing}
+A practical weakness is reliance on vendor-managed historical data: Yahoo Finance may revise adjusted price histories over time, so regenerated datasets can differ across runs even when the code is unchanged. In addition, the quantitative pipeline uses simple returns whereas the LSTM pipeline uses log returns. Although this choice is defensible, it reduces cross-module transparency and makes direct comparison less intuitive.
 
 \subsubsection{RAG Retrieval Model}
+The RAG pipeline relies on a relevance threshold. When no chunk passes threshold, fallback top-\(k\) context may still be passed to generation, increasing risk of weak grounding. Embedding freshness is another fragility: if stores are updated while refresh is deferred, retrieval can lag current content. Operationally, vector-store persistence errors can also interrupt retrieval without rich user-facing recovery. Finally, uneven store population (for example, sparse concept chunks) can cap attainable Recall@\(k\) irrespective of retriever quality.
 
 \subsubsection{User Interface}
+Reasoning visibility remains mostly backend-facing; users do not see intermediate tool calls or retrieval traces unless additional surfacing is implemented. Session state is memory-backed and reset on refresh, so chat and portfolio continuity are not persisted across browser sessions. The strict chat-locking policy is safe but rigid for exploratory users who may want non-portfolio explanatory queries before full submission.
 
-\subsubsection{LLM Agent}
+\subsubsection{Explanation Layer}
+The hallucination guard currently flags suspicious numbers but does not automatically suppress or regenerate responses, so remediation is incomplete. Conversation context is truncated to a short recent window, which may degrade coherence for long sessions. Ambiguous multi-intent queries can also lose secondary intent when classifier confidence is low, resulting in incomplete context assembly for generation.
 
 
 
 \subsection{Limitations}
-\todo{Data vendor bias; historical vs forward-looking; LLM hallucination risk; regulatory disclaimer.}
 
 \subsubsection{Data Preprocessing}
-\subsubsection{Architecture}
+The preprocessing layer is also limited by its data source and scope. Dependence on \texttt{yfinance}/Yahoo Finance creates a single external point of failure, while the use of end-of-day adjusted closes excludes intraday dynamics, bid-ask effects, and liquidity stress. The default window beginning at \texttt{2020-01-01} captures recent regimes but not longer historical cycles, and survivorship effects are not explicitly modelled.
 
-\subsubsection{LSTM Model}
+\subsubsection{Architecture}
+The system is scoped to long-only portfolios and excludes options, leverage, and short positions. Instrument coverage is constrained by vendor availability. Historical-metric interpretation implicitly assumes a stable holding period over the sampled window, which may not match recently constructed portfolios. Conversation and comparison memory are also bounded by design.
+
+\subsubsection{LSTM Forecasting Module}
+The LSTM is stronger on volatility magnitude than directional forecasting under noisy short-horizon returns. Training data are largely synthetic portfolio constructions, which may not fully capture real deployment distributions. Macro signals (rates, regime indicators, event features) are not explicit model inputs, limiting robustness to abrupt regime shifts.
 
 \subsubsection{RAG Retrieval Model}
+The embedding model is general-purpose rather than finance-tuned, so domain-specific terminology may be underrepresented in vector space. A cross-encoder reranker is not currently in the retrieval stack.
 
 
-\subsubsection{LLM Agent}
+\subsubsection{Explanation Layer}
+Both Gemini models used are general-purpose, not financial-domain-specialised. Multi-intent handling exists but depends on secondary-intent emission quality, which can fail silently under ambiguous phrasing.
 
 
 \subsection{Ethics and responsible use}
-\todo{Not financial advice; transparency of citations and metrics.}
+This system is a research prototype and does not provide regulated financial advice. Outputs should therefore be interpreted alongside professional judgement rather than treated as standalone recommendations. While retrieved citations and numeric grounding checks improve transparency, they do not eliminate model risk or guarantee factual correctness under all conditions. Reported values are historical-statistical descriptors under explicit assumptions, not forward-looking guarantees.
