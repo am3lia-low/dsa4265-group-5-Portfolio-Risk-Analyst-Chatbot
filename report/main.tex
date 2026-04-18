@@ -7,12 +7,11 @@
 \usepackage[numbers,sort]{natbib}
 \usepackage{amsfonts, amsmath}
 \usepackage{graphicx}
-% Libertine (optional): \texttt{tlmgr install libertine} — then swap in \texttt{\textbackslash usepackage\{libertine\}}
-\usepackage{lmodern}
-% \usepackage{fullpage} % e.g. tlmgr install preprint — margins are handled by geometry below
+\IfFileExists{libertine.sty}{\usepackage{libertine}}{\usepackage{lmodern}}
+\IfFileExists{fullpage.sty}{\usepackage{fullpage}}{}
 \usepackage{xcolor}
 \usepackage{hyperref}
-% cleveref (optional): tlmgr install cleveref
+\IfFileExists{cleveref.sty}{\usepackage[nameinlink]{cleveref}}{}
 \usepackage{float}
 \hypersetup{
     colorlinks = true,
@@ -22,12 +21,38 @@
     anchorcolor = blue}
 \newcommand{\todo}[1]{\textcolor{red}{[TODO: #1]}}
 \urlstyle{same}
-% caption / subcaption / siunitx: tlmgr install caption subcaption siunitx
+\IfFileExists{subcaption.sty}{\usepackage{subcaption}}{}
 \usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\IfFileExists{siunitx.sty}{\usepackage{siunitx}}{}
 \graphicspath{{figures/}}
+\IfFileExists{caption.sty}{\captionsetup{font=small, labelfont=bf}}{}
 \usepackage[a4paper,margin=1in]{geometry}
-% setspace / parskip: tlmgr install setspace parskip
-% listings: tlmgr install listings — then restore lstset block from report history if needed
+\IfFileExists{setspace.sty}{\usepackage{setspace}}{}
+\IfFileExists{parskip.sty}{\usepackage{parskip}}{}
+\usepackage{listings}
+
+\definecolor{codebg}{RGB}{248,248,248}
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\scriptsize,
+    keywordstyle=\color{blue!60!black}\bfseries,
+    commentstyle=\color{green!50!black}\itshape,
+    stringstyle=\color{black!60},
+    backgroundcolor=\color{codebg},
+    breaklines=true,
+    breakatwhitespace=true,
+    frame=none,
+    showstringspaces=false,
+    columns=fullflexible,
+    keepspaces=true,
+    aboveskip=6pt,
+    belowskip=6pt,
+    literate={->}{{$\rightarrow$}}2
+             {\\}{{\textbackslash}}1
+             {\_}{{\_}}1,
+}
 
 \makeatletter
 \renewcommand\paragraph{\@startsection{paragraph}{4}{\z@}%
@@ -51,7 +76,11 @@
     \centering
 
     \vspace*{1.0cm}
-    \includegraphics[width=0.4\textwidth]{nus_logo.jpg}
+    \IfFileExists{figures/nus_logo.jpg}{%
+        \includegraphics[width=0.4\textwidth]{figures/nus_logo.jpg}%
+    }{%
+        \vspace{1.6cm}% Keep title-page spacing when logo is unavailable
+    }
 
     \vspace{1.0cm}
 
@@ -87,7 +116,7 @@
 \textbf{Abstract}
 \end{center}
 
-Risk indicators shown in consumer applications are frequently opaque with respect to the portfolio weights to which they pertain, whilst unconstrained dialogue with large language models can yield numerically specific yet unsubstantiated statements drawn from parametric memory. This report describes a Streamlit-based conversational system that mitigates these issues by coupling user-supplied holdings to a reproducible analytics pipeline. Validated ticker--weight pairs drive a single download of split- and dividend-adjusted closing prices via Yahoo Finance (\texttt{yfinance}); consistent simple-return series underpin annualised volatility, a historical one-day loss quantile used as a VaR-style descriptor, maximum drawdown, a Sharpe-style ratio with the risk-free rate fixed at zero, mean pairwise correlation, and a Herfindahl concentration measure. User utterances are classified with Google Gemini into task types (holistic review, named statistics, definitional queries, and related categories); a deterministic orchestration layer then invokes quantitative computation, hybrid retrieval over local knowledge corpora (BM25 plus dense vectors in Chroma), or both, and formats the user-visible reply as Markdown without a separate generative rewriting stage in the reference interface. The architecture modularises analytics and retrieval to admit further risk measures or forecasting components; findings are contingent on vendor data quality and reporting delay, and the software is offered for research and pedagogical use only, not as regulated investment advice.
+Risk indicators shown in consumer applications are frequently opaque with respect to the portfolio weights to which they pertain, whilst unconstrained dialogue with large language models can yield numerically specific yet unsubstantiated statements drawn from parametric memory. This report describes a Streamlit-based conversational system that mitigates these issues by coupling user-supplied holdings to a reproducible analytics pipeline. Validated ticker-weight pairs drive a single download of split- and dividend-adjusted closing prices via Yahoo Finance (\texttt{yfinance}); consistent simple-return series underpin annualised volatility, a historical one-day loss quantile used as a VaR-style descriptor, maximum drawdown, a Sharpe-style ratio with the risk-free rate fixed at zero, mean pairwise correlation, and a Herfindahl concentration measure. User utterances are classified with Google Gemini into task types (holistic review, named statistics, definitional queries, and related categories); a deterministic orchestration layer then invokes quantitative computation, hybrid retrieval over local knowledge corpora (BM25 plus dense vectors in Chroma), or both, and formats the user-visible reply as Markdown without a separate generative rewriting stage in the reference interface. The architecture modularises analytics and retrieval to admit further risk measures or forecasting components; findings are contingent on vendor data quality and reporting delay, and the software is offered for research and pedagogical use only, not as regulated investment advice.
 
 \end{minipage}
 
@@ -114,8 +143,5 @@ Risk indicators shown in consumer applications are frequently opaque with respec
 \input{sections/discussion}
 
 \input{sections/conclusion}
-
-\bibliographystyle{plainnat}
-\bibliography{references}
 
 \end{document}

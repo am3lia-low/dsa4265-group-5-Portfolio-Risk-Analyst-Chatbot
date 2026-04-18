@@ -1,10 +1,32 @@
 \section{Data and preprocessing}
 \label{sec:data}
 
-This section aligns with \texttt{data\_sourcing\_and\_preprocessing.ipynb}: group tickers, \texttt{Adj Close}, start date, the bounded forward-fill cleaning rule, and exports under \texttt{data/processed/}. In parallel, the deployed app downloads prices via \texttt{yfinance} using the shared helper in the \texttt{agent\_tools} package (fetch from \texttt{2020-01-01}, simple returns on the analytics path). The notebook outputs remain the canonical basis for figures and for any workflow that reads the CSVs directly.
+This section aligns with \texttt{data\_sourcing\_and\_preprocessing.ipynb}: group tickers, \texttt{Adj Close}, start date, the bounded forward-fill cleaning rule, and exports under \path{data/processed/}. In parallel, the deployed app downloads prices via \texttt{yfinance} using the shared helper in the \texttt{agent\_tools} package over a rolling five-year window at runtime (simple returns on the analytics path). The notebook outputs remain the canonical basis for figures and for any workflow that reads the CSVs directly.
+
+\subsection{Notebook and runtime data pathways}
+To avoid conflating the fixed report dataset with the live application path, Table~\ref{tab:data-pathways} distinguishes the two data flows used in this project. Unless otherwise stated, the remainder of this section refers to the notebook pipeline, because it produces the checked-in processed files and the report figures.
+
+\begin{table}[htbp]
+    \centering
+    \footnotesize
+    \setlength{\tabcolsep}{5pt}
+    \renewcommand{\arraystretch}{1.2}
+    \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.18\textwidth} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X}
+        \toprule
+        \textbf{Comparison dimension} & \textbf{Offline notebook preprocessing pipeline} & \textbf{Online deployed application pipeline} \\
+        \midrule
+        Primary purpose & Reproducible data preparation for report figures and downstream offline analysis & Live analytics for user queries in the Streamlit interface \\
+        Date window & Fixed by \texttt{START = "2020-01-01"} and \texttt{END = None} & Rolling five-year lookback computed at runtime \\
+        Instrument set & Default group panel: \texttt{AAPL}, \texttt{MSFT}, \texttt{TSLA}, \texttt{SPY}, \texttt{TLT}, \texttt{GLD} & User-supplied tickers, with \texttt{SPY} optionally appended for benchmark-aware metrics \\
+        Outputs & Persisted CSV and metadata artifacts under \path{data/processed/} & In-memory price and return matrices for the current session \\
+        \bottomrule
+    \end{tabularx}
+    \caption{Comparison of the notebook preprocessing pipeline and the deployed application data pipeline.}
+    \label{tab:data-pathways}
+\end{table}
 
 \subsection{Instrument universe and calendar}
-The group’s default panel comprises \textbf{AAPL, MSFT, TSLA, SPY, TLT, GLD}---a mix of single-name equities, a broad U.S.\ equity ETF, long Treasuries, and gold---so correlation structure is non-trivial. Prices are taken from Yahoo Finance via \texttt{yfinance}. The preprocessing notebook pins \texttt{START = "2020-01-01"} and \texttt{END = None} (through ``today'' at run time). The checked-in \texttt{dataset\_meta.json} reports 1567 aligned price rows and 1566 return rows after cleaning; re-running the notebook will update those counts if the calendar advances.
+The group’s default panel comprises \textbf{AAPL, MSFT, TSLA, SPY, TLT, GLD}, giving a mix of single-name equities, a broad U.S.\ equity ETF, long Treasuries, and gold, so correlation structure is non-trivial. Prices are taken from Yahoo Finance via \texttt{yfinance}. The preprocessing notebook pins \texttt{START = "2020-01-01"} and \texttt{END = None} (through ``today'' at run time). The checked-in \texttt{dataset\_meta.json} reports 1567 aligned price rows and 1566 return rows after cleaning; re-running the notebook will update those counts if the calendar advances. In deployed inference, \texttt{SPY} may also be auto-appended when absent to support benchmark-dependent metrics.
 
 \subsection{Price field and motivation for adjustment}
 All downstream risk statistics operate on \textbf{adjusted} closing levels so that splits and cash dividends do not introduce spurious jumps. Raw \texttt{Close} would bias volatility, drawdown, and correlation estimates. The notebook normalises vendor output to a single date index $\times$ tickers table before exploratory analysis.
@@ -29,8 +51,7 @@ Before committing to a cleaning rule, the notebook inspects level and return ser
 \subsection{Cleaning rule and export}
 The following extract matches the preprocessing notebook: forward-fill a \emph{bounded} number of consecutive missing observations, then drop any row that still contains a gap across tickers. Bounded imputation limits silent invention of prices; dropping incomplete rows enforces a common calendar for portfolio sums.
 
-{\small
-\begin{verbatim}
+\begin{lstlisting}
 def clean_prices(prices: pd.DataFrame, ffill_limit: int = 5) -> pd.DataFrame:
     px = prices.sort_index()
     px = px.ffill(limit=ffill_limit)
@@ -40,14 +61,13 @@ def clean_prices(prices: pd.DataFrame, ffill_limit: int = 5) -> pd.DataFrame:
 prices_clean = clean_prices(raw_prices)
 simple_rets_clean = prices_clean.pct_change().dropna()
 log_rets_clean = np.log(prices_clean).diff().dropna()
-\end{verbatim}
-}
+\end{lstlisting}
 \begin{center}
-{\footnotesize Source: \texttt{data\_sourcing\_and\_preprocessing.ipynb} (cleaning cell).}
+{\footnotesize Source: \texttt{data\_sourcing\_and\_preprocessing.ipynb}.}
 \end{center}
 
 \noindent
-The notebook writes \texttt{adj\_close\_prices.csv}, \texttt{simple\_returns.csv}, \texttt{log\_returns.csv}, and \texttt{dataset\_meta.json} under \texttt{data/processed/}. Other subsystems (offline quant, RAG tabular hooks, LSTM notebooks) can depend on those paths without re-downloading.
+The notebook writes \texttt{adj\_close\_prices.csv}, \texttt{simple\_returns.csv}, \texttt{log\_returns.csv}, and \texttt{dataset\_meta.json} under \path{data/processed/}. Other subsystems (offline quant, RAG tabular hooks, LSTM notebooks) can depend on those paths without re-downloading. These processed artifacts also serve as the common input layer for the return notation and risk metrics formalised in Section~\ref{sec:methodology}.
 
 \subsection{Reproducibility}
-Anyone regenerating the figures should (i) run the notebook from the repository root so path constants resolve, (ii) record the execution date in the report or appendix because Yahoo may revise historical adjusted series, and (iii) optionally run \texttt{python report/scripts/make\_data\_figures.py} to rebuild Figure~\ref{fig:drawdowns}--\ref{fig:corr} from the CSVs currently on disk.
+To support reproducibility, the data preparation workflow should be run from the repository root so that file paths resolve consistently. Because Yahoo Finance data may change over time, the execution date should be recorded whenever figures are regenerated. Figures~\ref{fig:drawdowns} and~\ref{fig:corr} can be rebuilt from the processed CSVs by running \texttt{python} on \path{report/scripts/make_data_figures.py}.
