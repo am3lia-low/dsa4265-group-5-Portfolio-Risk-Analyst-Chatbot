@@ -8,17 +8,21 @@
 
 \subsection{Possible Future Improvements}
 
+\subsubsection{Architecture \& Design}
+In order to accommodate a more realistic portfolio that reflects the real world, we want to extend support beyond Yahoo Finance to include additional data sources that would broaden the chatbot’s applicability to niche equities and cryptocurrency instruments currently excluded from the pipeline. Support for more complex portfolio structures, such as short positions, leveraged products, and options, would allow the system to serve a wider range of investment strategies.
 
-\subsubsection{Architectural Level}
+In addition, we want to replace session-based storage with a persistent database layer that would allow portfolio history, chat records, and analytical outputs to be retained across sessions, enabling longer-term tracking and multi-session continuity.
 
+\subsubsection{LSTM Model}
+We want to incorporate macroeconomic signals such as interest rate data, volatility indices, and yield curve information as we observe that log-returns alone are too noisy for the model to learn the future direction of the portfolio. Additional input features would improve the model's ability to anticipate sudden regime changes and market shocks that are not detectable from the past 60 days of return history alone. Training on real-world portfolio data, rather than synthetically generated sequences, would also improve the model’s generalisation across a broader range of portfolio compositions.
 
-\subsubsection{LSTM Component}
-
-
-\subsubsection{RAG Pipeline}
+\subsubsection{RAG Retrieval Model}
+As mentioned in our limitations, expanding the concept knowledge base beyond its current single-chunk-per-concept structure would increase the hard ceiling on Recall@$k$ for concept explanation queries. Adding a cross-encoder re-ranker as a post-retrieval stage would improve chunk ordering before generation, tackling the issue of the current reliance on embedding similarity alone. Fine-tuning the embedding model on financial language would improve retrieval precision for domain-specific terms that general-purpose sentence transformers do not represent well.
 
 \subsubsection{LLM Agent}
+To improve the ability to handle ambiguous queries that consist of multiple intents, we want to replace the current prompt-based intent classifier with a fine-tuned BERT model, as the zero-shot LLM classifier occasionally settles on a single route and omits relevant context. Upgrading to a more capable language model better suited to financial reasoning would be effective for any client-facing deployment beyond the testing stage.
 
 \subsubsection{User Interface}
+To give more clarity and transparency for the user, we aim to implement surfacing of the system’s reasoning steps during loading, showing which tools were called and what context was retrieved before the LLM generated its response. This would directly address the transparency goal that we had for the project. An expandable section in the final output could allow users who want deeper insight to explore the full reasoning chain without cluttering the default view.
 
 \subsection{Conclusion}
